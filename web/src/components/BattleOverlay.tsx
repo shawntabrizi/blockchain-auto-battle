@@ -7,7 +7,7 @@ export function BattleOverlay() {
   const { battleOutput, showBattleOverlay, currentBattleEventIndex, advanceBattleEvent, continueAfterBattle } = useGameStore();
   const [autoPlay, setAutoPlay] = useState(true);
 
-  // Auto-advance events
+  // Auto-advance combat rounds (show all events in a round simultaneously)
   useEffect(() => {
     if (!autoPlay || !showBattleOverlay || !battleOutput) return;
 
@@ -15,7 +15,7 @@ export function BattleOverlay() {
       if (currentBattleEventIndex < battleOutput.events.length - 1) {
         advanceBattleEvent();
       }
-    }, 1200); // Slightly slower for better visualization
+    }, 1500); // Slightly longer to let players see the simultaneous actions
 
     return () => clearTimeout(timer);
   }, [autoPlay, showBattleOverlay, battleOutput, currentBattleEventIndex, advanceBattleEvent]);
@@ -24,6 +24,53 @@ export function BattleOverlay() {
 
   const currentEvent = battleOutput.events[currentBattleEventIndex];
   const isLastEvent = currentBattleEventIndex >= battleOutput.events.length - 1;
+
+  // Get all events to display for the current "combat round"
+  const getEventsToDisplay = () => {
+    const events = battleOutput.events;
+    if (currentBattleEventIndex >= events.length) return [];
+
+    const startEvent = events[currentBattleEventIndex];
+
+    // If it's a unitsClash, include all events until the next unitsClash or battleEnd
+    if (startEvent.type === 'unitsClash') {
+      const roundEvents: CombatEvent[] = [startEvent];
+      for (let i = currentBattleEventIndex + 1; i < events.length; i++) {
+        const event = events[i];
+        if (event.type === 'unitsClash' || event.type === 'battleEnd') {
+          break;
+        }
+        roundEvents.push(event);
+      }
+      return roundEvents;
+    }
+
+    // For other events, just show the current event
+    return [startEvent];
+  };
+
+  const eventsToDisplay = getEventsToDisplay();
+
+  // Calculate combat rounds for progress display
+  const getTotalRounds = () => {
+    let rounds = 0;
+    for (const event of battleOutput.events) {
+      if (event.type === 'unitsClash') {
+        rounds++;
+      }
+    }
+    return Math.max(rounds, 1); // At least 1 round for battleEnd
+  };
+
+  const getCurrentRoundNumber = () => {
+    let rounds = 0;
+    for (let i = 0; i <= currentBattleEventIndex; i++) {
+      if (battleOutput.events[i].type === 'unitsClash') {
+        rounds++;
+      }
+    }
+    return rounds;
+  };
 
   // Calculate current unit states based on battle events (starting from initial state)
   const calculateCurrentUnits = () => {
@@ -85,22 +132,24 @@ export function BattleOverlay() {
             attackingEnemyIndex={attackingUnits.enemy}
           />
 
-          {/* Current event display */}
-          <div className="bg-gray-700 rounded p-4 text-center min-h-[80px] flex items-center justify-center mt-4">
-            <EventDisplay event={currentEvent} />
+          {/* Current events display */}
+          <div className="bg-gray-700 rounded p-4 text-center min-h-[80px] flex flex-col items-center justify-center mt-4 gap-2">
+            {eventsToDisplay.map((event, index) => (
+              <EventDisplay key={index} event={event} />
+            ))}
           </div>
         </div>
 
-        {/* Event progress */}
+        {/* Combat round progress */}
         <div className="flex items-center justify-center gap-2 mb-4">
           <span className="text-sm text-gray-400">
-            Event {currentBattleEventIndex + 1} / {battleOutput.events.length}
+            Round {getCurrentRoundNumber() + 1} / {getTotalRounds()}
           </span>
           <div className="flex-1 max-w-xs h-2 bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-mana-blue transition-all duration-300"
               style={{
-                width: `${((currentBattleEventIndex + 1) / battleOutput.events.length) * 100}%`,
+                width: `${((getCurrentRoundNumber() + 1) / getTotalRounds()) * 100}%`,
               }}
             />
           </div>
