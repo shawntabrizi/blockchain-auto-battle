@@ -6,6 +6,7 @@ mod engine;
 mod view;
 mod battle;
 mod opponents;
+mod log;
 
 #[cfg(test)]
 mod tests;

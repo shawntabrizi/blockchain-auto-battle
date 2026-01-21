@@ -6,6 +6,12 @@ export function Arena() {
 
   if (!view) return null;
 
+  // Defensive check for board array
+  if (!view.board || !Array.isArray(view.board)) {
+    console.error('Arena: view.board is invalid:', view.board);
+    return <div className="text-red-500">Error: Board data not available</div>;
+  }
+
   const handleBoardSlotClick = (index: number) => {
     const unit = view.board[index];
 

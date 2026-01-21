@@ -6,6 +6,12 @@ export function Bench() {
 
   if (!view) return null;
 
+  // Defensive check for bench array
+  if (!view.bench || !Array.isArray(view.bench)) {
+    console.error('Bench: view.bench is invalid:', view.bench);
+    return <div className="text-red-500">Error: Bench data not available</div>;
+  }
+
   const handleBenchSlotClick = (index: number) => {
     const card = view.bench[index];
 

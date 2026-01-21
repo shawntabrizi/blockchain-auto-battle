@@ -1,0 +1,60 @@
+use web_sys::console;
+
+/// Log an info message to the browser console
+#[allow(unused)]
+pub fn info(msg: &str) {
+    console::log_1(&msg.into());
+}
+
+/// Log a warning message to the browser console
+#[allow(unused)]
+pub fn warn(msg: &str) {
+    console::warn_1(&msg.into());
+}
+
+/// Log an error message to the browser console
+#[allow(unused)]
+pub fn error(msg: &str) {
+    console::error_1(&msg.into());
+}
+
+/// Log a debug message with a label
+#[allow(unused)]
+pub fn debug(label: &str, msg: &str) {
+    console::log_1(&format!("[{}] {}", label, msg).into());
+}
+
+/// Log game state summary
+pub fn state_summary(
+    phase: &str,
+    round: i32,
+    mana: i32,
+    mana_limit: i32,
+    lives: i32,
+    wins: i32,
+    deck_count: usize,
+    board_count: usize,
+    bench_count: usize,
+) {
+    console::log_1(
+        &format!(
+            "=== STATE: {} | Round {} | Mana {}/{} | Lives {} | Wins {} | Deck {} | Board {} | Bench {} ===",
+            phase, round, mana, mana_limit, lives, wins, deck_count, board_count, bench_count
+        )
+        .into(),
+    );
+}
+
+/// Log an action being performed
+pub fn action(name: &str, details: &str) {
+    console::log_1(&format!(">> ACTION: {} - {}", name, details).into());
+}
+
+/// Log action result
+pub fn result(success: bool, msg: &str) {
+    if success {
+        console::log_1(&format!("   OK: {}", msg).into());
+    } else {
+        console::warn_1(&format!("   FAIL: {}", msg).into());
+    }
+}
