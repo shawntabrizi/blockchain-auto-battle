@@ -48,8 +48,15 @@ export interface CombatTarget {
   name: string;
 }
 
+export interface CombatUnitInfo {
+  name: string;
+  attack: number;
+  health: number;
+  maxHealth: number;
+}
+
 export type CombatEvent =
-  | { type: 'battleStart'; playerUnits: string[]; enemyUnits: string[] }
+  | { type: 'battleStart'; playerUnits: CombatUnitInfo[]; enemyUnits: CombatUnitInfo[] }
   | { type: 'unitsClash'; player: CombatTarget; enemy: CombatTarget }
   | { type: 'damageDealt'; target: CombatTarget; amount: number; newHealth: number }
   | { type: 'unitDied'; target: CombatTarget }
@@ -65,7 +72,8 @@ export interface BattleResultView {
 export interface BattleOutput {
   events: CombatEvent[];
   result: BattleResultView;
-  enemyBoard: string[];
+  playerUnits: CombatUnitInfo[];
+  enemyUnits: CombatUnitInfo[];
 }
 
 // Selection state for UI

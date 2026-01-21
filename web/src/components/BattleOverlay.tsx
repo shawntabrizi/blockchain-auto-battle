@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { BattleView } from './BattleView';
 import type { CombatEvent } from '../types';
 
 export function BattleOverlay() {
@@ -14,7 +15,7 @@ export function BattleOverlay() {
       if (currentBattleEventIndex < battleOutput.events.length - 1) {
         advanceBattleEvent();
       }
-    }, 800);
+    }, 1200); // Slightly slower for better visualization
 
     return () => clearTimeout(timer);
   }, [autoPlay, showBattleOverlay, battleOutput, currentBattleEventIndex, advanceBattleEvent]);
@@ -34,21 +35,14 @@ export function BattleOverlay() {
 
         {/* Battle area */}
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
-          {/* Enemy units */}
-          <div className="flex justify-center gap-2 mb-4">
-            <span className="text-gray-400 self-center mr-2">Enemy:</span>
-            {battleOutput.enemyBoard.map((name, i) => (
-              <div
-                key={i}
-                className="w-16 h-20 bg-red-900/30 rounded border border-red-700 flex items-center justify-center text-xs text-center p-1"
-              >
-                {name}
-              </div>
-            ))}
-          </div>
+          {/* Battle view showing both sides */}
+          <BattleView
+            playerUnits={battleOutput.playerUnits}
+            enemyUnits={battleOutput.enemyUnits}
+          />
 
           {/* Current event display */}
-          <div className="bg-gray-700 rounded p-4 text-center min-h-[80px] flex items-center justify-center">
+          <div className="bg-gray-700 rounded p-4 text-center min-h-[80px] flex items-center justify-center mt-4">
             <EventDisplay event={currentEvent} />
           </div>
         </div>
@@ -130,19 +124,24 @@ function EventDisplay({ event }: { event: CombatEvent }) {
       );
 
     case 'unitsClash':
+      const playerPosition = 5 - event.player.index; // Convert array index to position (5=front, 1=back)
+      const enemyPosition = event.enemy.index + 1; // Convert array index to position (1=back, 5=front)
       return (
         <div className="text-lg">
-          <span className="text-blue-400">{event.player.name}</span>
+          <span className="text-blue-400">[{playerPosition}] {event.player.name}</span>
           <span className="text-yellow-400 mx-2">⚔️</span>
-          <span className="text-red-400">{event.enemy.name}</span>
+          <span className="text-red-400">{event.enemy.name} [{enemyPosition}]</span>
         </div>
       );
 
     case 'damageDealt':
+      const targetPosition = event.target.side === 'player'
+        ? 5 - event.target.index // Player: 5=front, 1=back
+        : event.target.index + 1; // Enemy: 1=back, 5=front
       return (
         <div className="text-lg">
           <span className={event.target.side === 'player' ? 'text-blue-400' : 'text-red-400'}>
-            {event.target.name}
+            [{targetPosition}] {event.target.name}
           </span>
           <span className="text-red-500 mx-2">-{event.amount}</span>
           <span className="text-gray-400">({event.newHealth} HP)</span>
@@ -150,10 +149,13 @@ function EventDisplay({ event }: { event: CombatEvent }) {
       );
 
     case 'unitDied':
+      const diedPosition = event.target.side === 'player'
+        ? 5 - event.target.index // Player: 5=front, 1=back
+        : event.target.index + 1; // Enemy: 1=back, 5=front
       return (
         <div className="text-lg">
           <span className={event.target.side === 'player' ? 'text-blue-400' : 'text-red-400'}>
-            {event.target.name}
+            [{diedPosition}] {event.target.name}
           </span>
           <span className="text-gray-500 ml-2">has fallen! 💀</span>
         </div>
