@@ -12,6 +12,8 @@ export function Arena() {
     return <div className="text-red-500">Error: Board data not available</div>;
   }
 
+
+
   const handleBoardSlotClick = (index: number) => {
     const unit = view.board[index];
 

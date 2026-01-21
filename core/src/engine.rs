@@ -109,8 +109,8 @@ const STARTER_TEMPLATES: &[CardTemplate] = &[
 pub struct BattleOutput {
     pub events: Vec<CombatEvent>,
     pub result: BattleResultView,
-    pub player_units: Vec<CombatUnitInfo>,
-    pub enemy_units: Vec<CombatUnitInfo>,
+    pub initial_player_units: Vec<CombatUnitInfo>,
+    pub initial_enemy_units: Vec<CombatUnitInfo>,
 }
 
 
@@ -622,13 +622,17 @@ impl GameEngine {
             .filter_map(|slot| slot.as_ref().map(CombatUnit::from_board_unit))
             .collect();
 
+        // Store initial state for battle output
+        let initial_player_units = player_units.clone();
+
         log::info(&format!("   Player units: {}", player_units.len()));
         for unit in &player_units {
             log::info(&format!("      - {} ({}/{})", unit.name, unit.attack, unit.health));
         }
 
         // Get enemy units for this round
-        let enemy_units = get_opponent_for_round(self.state.round);
+        let initial_enemy_units = get_opponent_for_round(self.state.round);
+        let enemy_units = initial_enemy_units.clone(); // Clone for simulation
 
         log::info(&format!("   Enemy units: {}", enemy_units.len()));
         for unit in &enemy_units {
@@ -636,8 +640,8 @@ impl GameEngine {
         }
 
         // Run simulation
-        let simulator = BattleSimulator::new(player_units, enemy_units.clone());
-        let (result, events, final_player_units) = simulator.simulate();
+        let simulator = BattleSimulator::new(player_units, enemy_units);
+        let (result, events, _final_player_units) = simulator.simulate();
 
         log::info(&format!("   Battle generated {} events", events.len()));
 
@@ -660,17 +664,17 @@ impl GameEngine {
         // Just like Super Auto Pets, battles don't damage your actual units
         log::info("   Board reset - battles have no permanent effects");
 
-        // Store battle output for UI playback
+        // Store battle output for UI playback (initial state for battle animation)
         self.last_battle_output = Some(BattleOutput {
             events,
             result: BattleResultView::from(&result),
-            player_units: final_player_units.iter().map(|u| CombatUnitInfo {
+            initial_player_units: initial_player_units.iter().map(|u| CombatUnitInfo {
                 name: u.name.clone(),
                 attack: u.attack,
                 health: u.health,
                 max_health: u.max_health,
             }).collect(),
-            enemy_units: enemy_units.iter().map(|u| CombatUnitInfo {
+            initial_enemy_units: initial_enemy_units.iter().map(|u| CombatUnitInfo {
                 name: u.name.clone(),
                 attack: u.attack,
                 health: u.health,

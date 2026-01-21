@@ -17,6 +17,8 @@ export function UnitCard({
   frozen = false,
   canAfford = true,
 }: UnitCardProps) {
+
+
   const isBoardUnit = 'currentHealth' in card;
   const currentHealth = isBoardUnit ? card.currentHealth : card.health;
   const maxHealth = isBoardUnit ? card.maxHealth : card.health;
@@ -26,7 +28,7 @@ export function UnitCard({
     <div
       onClick={onClick}
       className={`
-        card relative w-24 h-32 cursor-pointer select-none
+        card relative w-24 h-32 cursor-pointer select-none bg-card-bg rounded-lg border-2 border-gray-600 p-2 transition-all duration-200
         ${isSelected ? 'card-selected ring-2 ring-yellow-400' : ''}
         ${frozen ? 'ring-2 ring-cyan-400' : ''}
         ${!canAfford && showCost ? 'opacity-60' : ''}
@@ -109,7 +111,7 @@ export function EmptySlot({ onClick, isTarget = false, label }: EmptySlotProps) 
     <div
       onClick={onClick}
       className={`
-        slot w-24 h-32 cursor-pointer
+        slot w-24 h-32 cursor-pointer bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center
         ${isTarget ? 'border-yellow-400 bg-yellow-400/10' : ''}
       `}
     >

@@ -72,8 +72,8 @@ export interface BattleResultView {
 export interface BattleOutput {
   events: CombatEvent[];
   result: BattleResultView;
-  playerUnits: CombatUnitInfo[];
-  enemyUnits: CombatUnitInfo[];
+  initialPlayerUnits: CombatUnitInfo[];
+  initialEnemyUnits: CombatUnitInfo[];
 }
 
 // Selection state for UI
