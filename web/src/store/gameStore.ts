@@ -243,8 +243,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { battleOutput, currentBattleEventIndex } = get();
     if (!battleOutput) return;
 
-    if (currentBattleEventIndex < battleOutput.events.length - 1) {
-      set({ currentBattleEventIndex: currentBattleEventIndex + 1 });
+    const events = battleOutput.events;
+    const currentEvent = events[currentBattleEventIndex];
+
+    if (!currentEvent) return;
+
+    // For UnitsClash events, advance to show all related damage/death events at once
+    if (currentEvent.type === 'unitsClash') {
+      // Find the end of this combat round (next unitsClash or battleEnd)
+      let nextIndex = currentBattleEventIndex + 1;
+      while (nextIndex < events.length) {
+        const nextEvent = events[nextIndex];
+        if (nextEvent.type === 'unitsClash' || nextEvent.type === 'battleEnd') {
+          break;
+        }
+        nextIndex++;
+      }
+
+      // Advance to show all events in this combat round
+      if (nextIndex < events.length) {
+        set({ currentBattleEventIndex: nextIndex });
+      } else {
+        set({ currentBattleEventIndex: events.length - 1 });
+      }
+    } else {
+      // For other events, advance normally
+      if (currentBattleEventIndex < events.length - 1) {
+        set({ currentBattleEventIndex: currentBattleEventIndex + 1 });
+      }
     }
   },
 
