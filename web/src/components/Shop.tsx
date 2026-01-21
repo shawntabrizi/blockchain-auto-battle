@@ -6,6 +6,12 @@ export function Shop() {
 
   if (!view) return null;
 
+  // Defensive check for shop array
+  if (!view.shop || !Array.isArray(view.shop)) {
+    console.error('Shop: view.shop is invalid:', view.shop);
+    return <div className="text-red-500">Error: Shop data not available</div>;
+  }
+
   const handleShopSlotClick = (index: number) => {
     const slot = view.shop[index];
 

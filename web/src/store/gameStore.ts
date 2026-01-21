@@ -72,6 +72,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const engine = new wasm.GameEngine();
       const view = engine.get_view();
 
+      console.log('Raw view from WASM:', view);
+      console.log('View type:', typeof view);
+      console.log('View keys:', view ? Object.keys(view) : 'null');
+      console.log('View.shop:', view?.shop);
+      console.log('View.bench:', view?.bench);
+      console.log('View.board:', view?.board);
+      console.log('View JSON stringified:', JSON.stringify(view, null, 2));
+
       set({ engine, view, isLoading: false });
 
       console.log('WASM initialized:', wasm.greet());
