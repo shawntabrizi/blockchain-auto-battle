@@ -102,3 +102,13 @@ impl ShopSlot {
         }
     }
 }
+
+/// Unit information for battle display
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CombatUnitInfo {
+    pub name: String,
+    pub attack: i32,
+    pub health: i32,
+    pub max_health: i32,
+}

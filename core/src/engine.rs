@@ -109,8 +109,11 @@ const STARTER_TEMPLATES: &[CardTemplate] = &[
 pub struct BattleOutput {
     pub events: Vec<CombatEvent>,
     pub result: BattleResultView,
-    pub enemy_board: Vec<String>,
+    pub player_units: Vec<CombatUnitInfo>,
+    pub enemy_units: Vec<CombatUnitInfo>,
 }
+
+
 
 /// The main game engine exposed to WASM
 #[wasm_bindgen]
@@ -626,7 +629,6 @@ impl GameEngine {
 
         // Get enemy units for this round
         let enemy_units = get_opponent_for_round(self.state.round);
-        let enemy_names: Vec<String> = enemy_units.iter().map(|u| u.name.clone()).collect();
 
         log::info(&format!("   Enemy units: {}", enemy_units.len()));
         for unit in &enemy_units {
@@ -634,7 +636,7 @@ impl GameEngine {
         }
 
         // Run simulation
-        let simulator = BattleSimulator::new(player_units, enemy_units);
+        let simulator = BattleSimulator::new(player_units, enemy_units.clone());
         let (result, events, final_player_units) = simulator.simulate();
 
         log::info(&format!("   Battle generated {} events", events.len()));
@@ -669,7 +671,18 @@ impl GameEngine {
         self.last_battle_output = Some(BattleOutput {
             events,
             result: BattleResultView::from(&result),
-            enemy_board: enemy_names,
+            player_units: final_player_units.iter().map(|u| CombatUnitInfo {
+                name: u.name.clone(),
+                attack: u.attack,
+                health: u.health,
+                max_health: u.max_health,
+            }).collect(),
+            enemy_units: enemy_units.iter().map(|u| CombatUnitInfo {
+                name: u.name.clone(),
+                attack: u.attack,
+                health: u.health,
+                max_health: u.max_health,
+            }).collect(),
         });
 
         log::info("=== BATTLE END ===");
