@@ -25,6 +25,41 @@ export function BattleOverlay() {
   const currentEvent = battleOutput.events[currentBattleEventIndex];
   const isLastEvent = currentBattleEventIndex >= battleOutput.events.length - 1;
 
+  // Calculate current unit states based on battle events
+  const calculateCurrentUnits = () => {
+    const playerUnits = battleOutput.playerUnits.map(unit => ({ ...unit }));
+    const enemyUnits = battleOutput.enemyUnits.map(unit => ({ ...unit }));
+
+    // Process all events up to current index to get current health
+    for (let i = 0; i <= currentBattleEventIndex; i++) {
+      const event = battleOutput.events[i];
+      if (event.type === 'damageDealt') {
+        const units = event.target.side === 'player' ? playerUnits : enemyUnits;
+        if (units[event.target.index]) {
+          units[event.target.index] = {
+            ...units[event.target.index],
+            health: event.newHealth
+          };
+        }
+      }
+    }
+
+    return { playerUnits, enemyUnits };
+  };
+
+  // Get attacking units for current event
+  const getAttackingUnits = () => {
+    if (currentEvent.type !== 'unitsClash') return { player: -1, enemy: -1 };
+
+    return {
+      player: currentEvent.player.index,
+      enemy: currentEvent.enemy.index
+    };
+  };
+
+  const { playerUnits: currentPlayerUnits, enemyUnits: currentEnemyUnits } = calculateCurrentUnits();
+  const attackingUnits = getAttackingUnits();
+
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className="bg-gray-900 rounded-xl p-6 max-w-2xl w-full mx-4 border border-gray-700">
@@ -37,8 +72,10 @@ export function BattleOverlay() {
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
           {/* Battle view showing both sides */}
           <BattleView
-            playerUnits={battleOutput.playerUnits}
-            enemyUnits={battleOutput.enemyUnits}
+            playerUnits={currentPlayerUnits}
+            enemyUnits={currentEnemyUnits}
+            attackingPlayerIndex={attackingUnits.player}
+            attackingEnemyIndex={attackingUnits.enemy}
           />
 
           {/* Current event display */}

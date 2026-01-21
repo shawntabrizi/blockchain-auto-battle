@@ -3,9 +3,16 @@ import type { CombatUnitInfo } from '../types';
 interface BattleViewProps {
   playerUnits: CombatUnitInfo[];
   enemyUnits: CombatUnitInfo[];
+  attackingPlayerIndex?: number;
+  attackingEnemyIndex?: number;
 }
 
-export function BattleView({ playerUnits, enemyUnits }: BattleViewProps) {
+export function BattleView({
+  playerUnits,
+  enemyUnits,
+  attackingPlayerIndex = -1,
+  attackingEnemyIndex = -1
+}: BattleViewProps) {
   // In Super Auto Pets, positions are numbered from the back (1) to front (5)
   // But arrays are indexed from 0 (front) to 4 (back)
   // So we need to reverse the display order
@@ -24,18 +31,31 @@ export function BattleView({ playerUnits, enemyUnits }: BattleViewProps) {
             const unit = playerUnits[unitIndex];
             const position = i + 1; // Display position (1, 2, 3, 4, 5)
             const isDead = unit && unit.health <= 0;
+            const isAttacking = attackingPlayerIndex === unitIndex;
+
+            // Don't show dead units
+            if (isDead) {
+              return (
+                <div key={`player-${i}`} className="flex flex-col items-center gap-1">
+                  <div className="text-xs text-gray-500">{position}</div>
+                  <div className="w-16 h-20 rounded border border-gray-600 bg-gray-800/50 flex items-center justify-center">
+                    <span className="text-gray-600 text-xs">-</span>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div key={`player-${i}`} className="flex flex-col items-center gap-1">
                 <div className="text-xs text-gray-500">{position}</div>
                 {unit ? (
-                  <div className={`w-16 h-20 rounded border flex flex-col items-center justify-center text-xs p-1 ${
-                    isDead ? 'bg-red-900/50 border-red-700 opacity-50' : 'bg-blue-900/50 border-blue-700'
+                  <div className={`w-16 h-20 rounded border flex flex-col items-center justify-center text-xs p-1 transition-all duration-200 ${
+                    isAttacking ? 'bg-yellow-600 border-yellow-400 shadow-lg scale-110 ring-2 ring-yellow-400' : 'bg-blue-900/50 border-blue-700'
                   }`}>
                     <div className="font-bold text-center leading-tight">{unit.name}</div>
                     <div className="flex gap-1 mt-1">
                       <span className="text-red-400">⚔️{unit.attack}</span>
-                      <span className={`text-green-400 ${isDead ? 'line-through' : ''}`}>
+                      <span className="text-green-400">
                         ❤️{unit.health}/{unit.maxHealth}
                       </span>
                     </div>
@@ -64,18 +84,31 @@ export function BattleView({ playerUnits, enemyUnits }: BattleViewProps) {
             const unit = enemyUnits[unitIndex];
             const position = i + 1; // Display position (1, 2, 3, 4, 5)
             const isDead = unit && unit.health <= 0;
+            const isAttacking = attackingEnemyIndex === unitIndex;
+
+            // Don't show dead units
+            if (isDead) {
+              return (
+                <div key={`enemy-${i}`} className="flex flex-col items-center gap-1">
+                  <div className="text-xs text-gray-500">{position}</div>
+                  <div className="w-16 h-20 rounded border border-gray-600 bg-gray-800/50 flex items-center justify-center">
+                    <span className="text-gray-600 text-xs">-</span>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div key={`enemy-${i}`} className="flex flex-col items-center gap-1">
                 <div className="text-xs text-gray-500">{position}</div>
                 {unit ? (
-                  <div className={`w-16 h-20 rounded border flex flex-col items-center justify-center text-xs p-1 ${
-                    isDead ? 'bg-red-900/50 border-red-700 opacity-50' : 'bg-red-900/50 border-red-700'
+                  <div className={`w-16 h-20 rounded border flex flex-col items-center justify-center text-xs p-1 transition-all duration-200 ${
+                    isAttacking ? 'bg-yellow-600 border-yellow-400 shadow-lg scale-110 ring-2 ring-yellow-400' : 'bg-red-900/50 border-red-700'
                   }`}>
                     <div className="font-bold text-center leading-tight">{unit.name}</div>
                     <div className="flex gap-1 mt-1">
                       <span className="text-red-400">⚔️{unit.attack}</span>
-                      <span className={`text-green-400 ${isDead ? 'line-through' : ''}`}>
+                      <span className="text-green-400">
                         ❤️{unit.health}/{unit.maxHealth}
                       </span>
                     </div>
