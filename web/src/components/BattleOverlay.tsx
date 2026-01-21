@@ -25,17 +25,17 @@ export function BattleOverlay() {
   const currentEvent = battleOutput.events[currentBattleEventIndex];
   const isLastEvent = currentBattleEventIndex >= battleOutput.events.length - 1;
 
-  // Calculate current unit states based on battle events (Super Auto Pets style)
+  // Calculate current unit states based on battle events (starting from initial state)
   const calculateCurrentUnits = () => {
-    const playerUnits = [...battleOutput.playerUnits];
-    const enemyUnits = [...battleOutput.enemyUnits];
+    const playerUnits = battleOutput.initialPlayerUnits.map(unit => ({ ...unit }));
+    const enemyUnits = battleOutput.initialEnemyUnits.map(unit => ({ ...unit }));
 
-    // Process all events up to current index
+    // Apply events forward from initial state to current event index
     for (let i = 0; i <= currentBattleEventIndex; i++) {
       const event = battleOutput.events[i];
       if (event.type === 'damageDealt') {
         const units = event.target.side === 'player' ? playerUnits : enemyUnits;
-        // Update health at the current front position
+        // Update health at the target position (front unit during battle)
         if (units[0]) {
           units[0] = {
             ...units[0],
@@ -44,7 +44,7 @@ export function BattleOverlay() {
         }
       } else if (event.type === 'unitDied') {
         const units = event.target.side === 'player' ? playerUnits : enemyUnits;
-        // Remove dead unit from front (they slide forward)
+        // Remove dead unit from front (units slide forward)
         if (units.length > 0) {
           units.shift();
         }
