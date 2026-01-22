@@ -129,16 +129,22 @@ export function CardDetailModal({ card, isOpen, onClose }: CardDetailModalProps)
         </div>
 
         {/* Ability Section */}
-        {card.ability && (
-          <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-            <h3 className="text-lg font-bold text-yellow-400 mb-2">Ability: {card.ability.name}</h3>
-            <div className="text-sm text-gray-300 mb-2">
-              <strong>Trigger:</strong> {getTriggerDescription(card.ability.trigger)}
-            </div>
-            <div className="text-sm text-white">{card.ability.description}</div>
-            <div className="text-xs text-gray-400 mt-2 italic">
-              {getEffectDescription(card.ability.effect)}
-            </div>
+        {card.abilities.length > 0 && (
+          <div className="mb-6">
+            {card.abilities.map((ability, index) => (
+              <div key={index} className="mb-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h3 className="text-lg font-bold text-yellow-400 mb-2">
+                  Ability: {ability.name}
+                </h3>
+                <div className="text-sm text-gray-300 mb-2">
+                  <strong>Trigger:</strong> {getTriggerDescription(ability.trigger)}
+                </div>
+                <div className="text-sm text-white">{ability.description}</div>
+                <div className="text-xs text-gray-400 mt-2 italic">
+                  {getEffectDescription(ability.effect)}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

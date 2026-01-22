@@ -210,16 +210,17 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
         <div
           className={`transition-transform duration-200 ${isClashing ? (isPlayer ? 'clash-bump-right' : 'clash-bump-left') : ''}`}
         >
-          <UnitCard
-            card={{
-              id: 0, // Not used
-              templateId: unit.templateId,
-              name: unit.name,
-              attack: unit.attack,
-              health: unit.health,
-              playCost: 0,
-              pitchValue: 0,
-            }}
+            <UnitCard
+              card={{
+                id: 0, // Not used
+                templateId: unit.templateId,
+                name: unit.name,
+                attack: unit.attack,
+                health: unit.health,
+                playCost: 0,
+                pitchValue: 0,
+                abilities: unit.abilities,
+              }}
             showCost={false}
             showPitch={false}
             isSelected={false}

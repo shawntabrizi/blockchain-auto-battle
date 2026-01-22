@@ -12,12 +12,14 @@ type TabType = 'card' | 'rules';
 export function CardDetailPanel({ card, isVisible }: CardDetailPanelProps) {
   const [activeTab, setActiveTab] = React.useState<TabType>('card');
   const [showRaw, setShowRaw] = React.useState(false);
-  const { view, selection, buyCard, toggleFreeze, pitchShopCard, setSelection } = useGameStore();
+  const { view, selection, buyCard, toggleFreeze, pitchShopCard, pitchBoardUnit, setSelection } = useGameStore();
 
   if (!isVisible) return null;
 
-  // Get the selected shop index for actions
+  // Get the selected shop/board index for actions
   const selectedShopIndex = selection?.type === 'shop' ? selection.index : -1;
+  const selectedBoardIndex = selection?.type === 'board' ? selection.index : -1;
+  const isBoardUnit = selection?.type === 'board';
 
   const renderCardTab = () => {
     if (!card) {
@@ -137,54 +139,78 @@ export function CardDetailPanel({ card, isVisible }: CardDetailPanelProps) {
         </div>
 
         {/* Ability Section */}
-        {card.ability && (
-          <div className="mb-6 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-            <h3 className="text-md font-bold text-yellow-400 mb-2">Ability: {card.ability.name}</h3>
-            <div className="text-xs text-gray-300 mb-2">
-              <strong>Trigger:</strong> {getTriggerDescription(card.ability.trigger)}
-            </div>
-            <div className="text-sm text-white">{card.ability.description}</div>
-            <div className="text-xs text-gray-400 mt-2 italic">
-              {getEffectDescription(card.ability.effect)}
-            </div>
+        {card.abilities.length > 0 && (
+          <div className="mb-6">
+            {card.abilities.map((ability, index) => (
+              <div key={index} className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h3 className="text-md font-bold text-yellow-400 mb-2">
+                  Ability: {ability.name}
+                </h3>
+                <div className="text-xs text-gray-300 mb-2">
+                  <strong>Trigger:</strong> {getTriggerDescription(ability.trigger)}
+                </div>
+                <div className="text-sm text-white">{ability.description}</div>
+                <div className="text-xs text-gray-400 mt-2 italic">
+                  {getEffectDescription(ability.effect)}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         {/* Action Buttons */}
         <div className="mb-6 space-y-2">
-          <button
-            onClick={() => {
-              if (selectedShopIndex >= 0) {
-                buyCard(selectedShopIndex);
-                setSelection(null); // Clear selection after buying
-              }
-            }}
-            disabled={selectedShopIndex < 0 || !view?.canAfford[selectedShopIndex]}
-            className={`w-full btn text-sm ${selectedShopIndex >= 0 && view?.canAfford[selectedShopIndex] ? 'btn-primary' : 'btn-disabled'}`}
-          >
-            Buy (-{card.playCost} mana)
-          </button>
-          <button
-            onClick={() => {
-              if (selectedShopIndex >= 0) {
-                toggleFreeze(selectedShopIndex);
-              }
-            }}
-            className="w-full btn bg-cyan-600 hover:bg-cyan-500 text-white text-sm"
-          >
-            {view?.shop[selectedShopIndex]?.frozen ? 'Unfreeze' : 'Freeze'}
-          </button>
-          <button
-            onClick={() => {
-              if (selectedShopIndex >= 0) {
-                pitchShopCard(selectedShopIndex);
-                setSelection(null); // Clear selection after pitching
-              }
-            }}
-            className="w-full btn btn-danger text-sm"
-          >
-            Pitch (+{card.pitchValue} mana)
-          </button>
+          {isBoardUnit ? (
+            // Board unit actions
+            <button
+              onClick={() => {
+                if (selectedBoardIndex >= 0) {
+                  pitchBoardUnit(selectedBoardIndex);
+                  setSelection(null); // Clear selection after pitching
+                }
+              }}
+              className="w-full btn btn-danger text-sm"
+            >
+              Pitch Board Unit
+            </button>
+          ) : (
+            // Shop card actions
+            <>
+              <button
+                onClick={() => {
+                  if (selectedShopIndex >= 0) {
+                    buyCard(selectedShopIndex);
+                    setSelection(null); // Clear selection after buying
+                  }
+                }}
+                disabled={selectedShopIndex < 0 || !view?.canAfford[selectedShopIndex]}
+                className={`w-full btn text-sm ${selectedShopIndex >= 0 && view?.canAfford[selectedShopIndex] ? 'btn-primary' : 'btn-disabled'}`}
+              >
+                Buy (-{card.playCost} mana)
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedShopIndex >= 0) {
+                    toggleFreeze(selectedShopIndex);
+                  }
+                }}
+                className="w-full btn bg-cyan-600 hover:bg-cyan-500 text-white text-sm"
+              >
+                {view?.shop[selectedShopIndex]?.frozen ? 'Unfreeze' : 'Freeze'}
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedShopIndex >= 0) {
+                    pitchShopCard(selectedShopIndex);
+                    setSelection(null); // Clear selection after pitching
+                  }
+                }}
+                className="w-full btn btn-danger text-sm"
+              >
+                Pitch (+{card.pitchValue} mana)
+              </button>
+            </>
+          )}
         </div>
 
         {/* Raw JSON Section */}

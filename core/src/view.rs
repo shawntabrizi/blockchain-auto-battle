@@ -42,6 +42,7 @@ pub struct BoardUnitView {
     pub health: i32,
     pub play_cost: i32,
     pub pitch_value: i32,
+    pub abilities: Vec<crate::types::Ability>,
 }
 
 impl From<&BoardUnit> for BoardUnitView {
@@ -54,6 +55,7 @@ impl From<&BoardUnit> for BoardUnitView {
             health: unit.current_health,
             play_cost: unit.card.economy.play_cost,
             pitch_value: unit.card.economy.pitch_value,
+            abilities: unit.card.abilities.clone(),
         }
     }
 }

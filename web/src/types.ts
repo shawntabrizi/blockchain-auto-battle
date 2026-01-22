@@ -43,6 +43,7 @@ export interface BoardUnitView {
   health: number;
   playCost: number;
   pitchValue: number;
+  abilities: Ability[];
 }
 
 export interface ShopSlotView {
