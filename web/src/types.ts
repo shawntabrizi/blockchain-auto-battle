@@ -19,7 +19,8 @@ export type AbilityTarget =
 
 export type AbilityEffect =
   | { type: 'damage'; amount: number; target: AbilityTarget }
-  | { type: 'modifyStats'; health: number; attack: number; target: AbilityTarget };
+  | { type: 'modifyStats'; health: number; attack: number; target: AbilityTarget }
+  | { type: 'spawnUnit'; attack: number; health: number; name: string };
 
 // Types matching the Rust view structs
 
@@ -99,6 +100,14 @@ export type CombatEvent =
         attackChange: number;
         newAttack: number;
         newHealth: number;
+      };
+    }
+  | {
+      type: 'unitSpawn';
+      payload: {
+        team: string;
+        spawnedUnit: UnitView;
+        newBoardState: UnitView[];
       };
     };
 

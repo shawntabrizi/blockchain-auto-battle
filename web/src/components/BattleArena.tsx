@@ -160,6 +160,17 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
           delay = 400;
           break;
         }
+
+        case 'unitSpawn': {
+          const { team, newBoardState } = event.payload;
+          if (team === 'PLAYER') {
+            setPlayerBoard(newBoardState);
+          } else {
+            setEnemyBoard(newBoardState);
+          }
+          delay = 600; // Slightly longer delay for spawn animation
+          break;
+        }
       }
 
       timeoutId = setTimeout(() => setEventIndex((i) => i + 1), delay);

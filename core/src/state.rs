@@ -100,8 +100,6 @@ impl GameState {
         Ok(())
     }
 
-
-
     /// Find an empty board slot
     pub fn find_empty_board_slot(&self) -> Option<usize> {
         self.board.iter().position(|slot| slot.is_none())
@@ -111,8 +109,6 @@ impl GameState {
     pub fn board_unit_count(&self) -> usize {
         self.board.iter().filter(|slot| slot.is_some()).count()
     }
-
-
 }
 
 impl Default for GameState {

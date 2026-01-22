@@ -68,6 +68,108 @@ pub enum CombatEvent {
         new_attack: i32,
         new_health: i32,
     },
+    #[serde(rename_all = "camelCase")]
+    UnitSpawn {
+        team: String,
+        spawned_unit: UnitView,
+        new_board_state: Vec<UnitView>,
+    },
+}
+
+/// The deterministic battle simulation.
+/// Takes the board state and returns a log of events for the UI to replay.
+pub fn resolve_battle(
+    player_board: &[BoardUnit],
+    enemy_board: &[BoardUnit],
+    seed: u64,
+) -> Vec<CombatEvent> {
+    let mut events = Vec::new();
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut instance_counter = 0;
+
+    let mut player_units: Vec<CombatUnit> = player_board
+        .iter()
+        .map(|u| {
+            instance_counter += 1;
+            CombatUnit {
+                instance_id: format!("p-{}", instance_counter),
+                team: Team::Player,
+                attack: u.card.stats.attack,
+                health: u.current_health,
+                max_health: u.card.stats.health,
+                ability: u.card.ability.clone(),
+                template_id: u.card.template_id.clone(),
+                name: u.card.name.clone(),
+                attack_buff: 0,
+                health_buff: 0,
+            }
+        })
+        .collect();
+
+    let mut enemy_units: Vec<CombatUnit> = enemy_board
+        .iter()
+        .map(|u| {
+            instance_counter += 1;
+            CombatUnit {
+                instance_id: format!("e-{}", instance_counter),
+                team: Team::Enemy,
+                attack: u.card.stats.attack,
+                health: u.current_health,
+                max_health: u.card.stats.health,
+                ability: u.card.ability.clone(),
+                template_id: u.card.template_id.clone(),
+                name: u.card.name.clone(),
+                attack_buff: 0,
+                health_buff: 0,
+            }
+        })
+        .collect();
+
+    // Execute battle phases
+    let battle_phases = [
+        BattlePhase::Start,
+        // Future: BattlePhase::BeforeAttack, BattlePhase::Attack, etc.
+    ];
+
+    // Execute initial phases
+    for &phase in &battle_phases {
+        execute_phase(
+            phase,
+            &mut player_units,
+            &mut enemy_units,
+            &mut events,
+            &mut rng,
+        );
+    }
+
+    // Main combat loop (simplified for now - just attack and hurt/faint)
+    while !player_units.is_empty() && !enemy_units.is_empty() {
+        execute_phase(
+            BattlePhase::Attack,
+            &mut player_units,
+            &mut enemy_units,
+            &mut events,
+            &mut rng,
+        );
+        execute_phase(
+            BattlePhase::HurtAndFaint,
+            &mut player_units,
+            &mut enemy_units,
+            &mut events,
+            &mut rng,
+        );
+    }
+
+    // Battle end
+    execute_phase(
+        BattlePhase::End,
+        &mut player_units,
+        &mut enemy_units,
+        &mut events,
+        &mut rng,
+    );
+
+    events
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -195,6 +297,57 @@ fn apply_ability_effect(
                         attack_change: *attack,
                         new_attack: unit.effective_attack(),
                         new_health: unit.effective_health(),
+                    });
+                }
+            }
+        }
+        AbilityEffect::SpawnUnit {
+            attack,
+            health,
+            name,
+        } => {
+            // Calculate instance counter first
+            let current_count = player_units.len() + enemy_units.len();
+            let instance_counter = current_count + 1;
+            let instance_id = format!(
+                "spawn-{}-{}",
+                match source_team {
+                    Team::Player => "p",
+                    Team::Enemy => "e",
+                },
+                instance_counter
+            );
+
+            // Create the new unit
+            let new_unit = CombatUnit {
+                instance_id: instance_id.clone(),
+                team: source_team,
+                attack: *attack,
+                health: *health,
+                max_health: *health,
+                ability: None, // Spawned units don't have abilities
+                template_id: format!("spawned-{}", name.to_lowercase().replace(" ", "-")),
+                name: name.clone(),
+                attack_buff: 0,
+                health_buff: 0,
+            };
+
+            // Spawn a new unit for the source team
+            match source_team {
+                Team::Player => {
+                    player_units.insert(0, new_unit);
+                    events.push(CombatEvent::UnitSpawn {
+                        team: "PLAYER".to_string(),
+                        spawned_unit: player_units[0].to_view(),
+                        new_board_state: player_units.iter().map(|u| u.to_view()).collect(),
+                    });
+                }
+                Team::Enemy => {
+                    enemy_units.insert(0, new_unit);
+                    events.push(CombatEvent::UnitSpawn {
+                        team: "ENEMY".to_string(),
+                        spawned_unit: enemy_units[0].to_view(),
+                        new_board_state: enemy_units.iter().map(|u| u.to_view()).collect(),
                     });
                 }
             }
@@ -474,77 +627,63 @@ fn execute_hurt_and_faint_phase(
     let p_died = player_units[0].health <= 0;
     let e_died = enemy_units[0].health <= 0;
 
-    if p_died || e_died {
-        // Collect OnFaint triggers from units about to die
-        let mut faint_triggers: Vec<(String, Team, i32, AbilityEffect, String)> = Vec::new();
+    // Remove dead units first
+    if p_died {
+        let dead_unit = player_units.remove(0);
+        events.push(CombatEvent::UnitDeath {
+            team: Team::Player.to_string(),
+            new_board_state: player_units.iter().map(|u| u.to_view()).collect(),
+        });
 
-        if p_died {
-            if let Some(ability) = &player_units[0].ability {
-                if ability.trigger == AbilityTrigger::OnFaint {
-                    faint_triggers.push((
-                        player_units[0].instance_id.clone(),
-                        player_units[0].team,
-                        player_units[0].attack,
-                        ability.effect.clone(),
-                        ability.name.clone(),
-                    ));
-                }
+        // Then execute OnFaint ability
+        if let Some(ability) = &dead_unit.ability {
+            if ability.trigger == AbilityTrigger::OnFaint {
+                events.push(CombatEvent::AbilityTrigger {
+                    source_instance_id: dead_unit.instance_id.clone(),
+                    ability_name: ability.name.clone(),
+                });
+                apply_ability_effect(
+                    &dead_unit.instance_id,
+                    Team::Player,
+                    &ability.effect,
+                    player_units,
+                    enemy_units,
+                    events,
+                    rng,
+                );
             }
         }
-        if e_died {
-            if let Some(ability) = &enemy_units[0].ability {
-                if ability.trigger == AbilityTrigger::OnFaint {
-                    faint_triggers.push((
-                        enemy_units[0].instance_id.clone(),
-                        enemy_units[0].team,
-                        enemy_units[0].attack,
-                        ability.effect.clone(),
-                        ability.name.clone(),
-                    ));
-                }
-            }
-        }
-
-        // Sort by Attack Power (Descending), with RNG tie-break
-        faint_triggers.shuffle(rng);
-        faint_triggers.sort_by_key(|(_, _, attack, _, _)| -attack);
-
-        // Execute OnFaint abilities
-        for (instance_id, team, _, effect, ability_name) in faint_triggers {
-            events.push(CombatEvent::AbilityTrigger {
-                source_instance_id: instance_id.clone(),
-                ability_name,
-            });
-            apply_ability_effect(
-                &instance_id,
-                team,
-                &effect,
-                player_units,
-                enemy_units,
-                events,
-                rng,
-            );
-        }
-
-        // Remove dead units and emit state changes
-        if p_died {
-            player_units.remove(0);
-            events.push(CombatEvent::UnitDeath {
-                team: Team::Player.to_string(),
-                new_board_state: player_units.iter().map(|u| u.to_view()).collect(),
-            });
-        }
-        if e_died {
-            enemy_units.remove(0);
-            events.push(CombatEvent::UnitDeath {
-                team: Team::Enemy.to_string(),
-                new_board_state: enemy_units.iter().map(|u| u.to_view()).collect(),
-            });
-        }
-
-        // Remove any additional units killed by OnFaint abilities
-        remove_dead_units(player_units, enemy_units, events);
     }
+
+    if e_died {
+        let dead_unit = enemy_units.remove(0);
+        events.push(CombatEvent::UnitDeath {
+            team: Team::Enemy.to_string(),
+            new_board_state: enemy_units.iter().map(|u| u.to_view()).collect(),
+        });
+
+        // Then execute OnFaint ability
+        if let Some(ability) = &dead_unit.ability {
+            if ability.trigger == AbilityTrigger::OnFaint {
+                events.push(CombatEvent::AbilityTrigger {
+                    source_instance_id: dead_unit.instance_id.clone(),
+                    ability_name: ability.name.clone(),
+                });
+                apply_ability_effect(
+                    &dead_unit.instance_id,
+                    Team::Enemy,
+                    &ability.effect,
+                    player_units,
+                    enemy_units,
+                    events,
+                    rng,
+                );
+            }
+        }
+    }
+
+    // Remove any additional units killed by OnFaint abilities
+    remove_dead_units(player_units, enemy_units, events);
 }
 /// Remove any dead units (health <= 0) and emit death events
 fn remove_dead_units(
@@ -571,100 +710,4 @@ fn remove_dead_units(
             new_board_state: enemy_units.iter().map(|u| u.to_view()).collect(),
         });
     }
-}
-
-/// The deterministic battle simulation.
-/// Takes the board state and returns a log of events for the UI to replay.
-pub fn resolve_battle(
-    player_board: &[BoardUnit],
-    enemy_board: &[BoardUnit],
-    seed: u64,
-) -> Vec<CombatEvent> {
-    let mut events = Vec::new();
-    let mut rng = StdRng::seed_from_u64(seed);
-    let mut instance_counter = 0;
-
-    let mut player_units: Vec<CombatUnit> = player_board
-        .iter()
-        .map(|u| {
-            instance_counter += 1;
-            CombatUnit {
-                instance_id: format!("p-{}", instance_counter),
-                team: Team::Player,
-                attack: u.card.stats.attack,
-                health: u.current_health,
-                max_health: u.card.stats.health,
-                ability: u.card.ability.clone(),
-                template_id: u.card.template_id.clone(),
-                name: u.card.name.clone(),
-                attack_buff: 0,
-                health_buff: 0,
-            }
-        })
-        .collect();
-
-    let mut enemy_units: Vec<CombatUnit> = enemy_board
-        .iter()
-        .map(|u| {
-            instance_counter += 1;
-            CombatUnit {
-                instance_id: format!("e-{}", instance_counter),
-                team: Team::Enemy,
-                attack: u.card.stats.attack,
-                health: u.current_health,
-                max_health: u.card.stats.health,
-                ability: u.card.ability.clone(),
-                template_id: u.card.template_id.clone(),
-                name: u.card.name.clone(),
-                attack_buff: 0,
-                health_buff: 0,
-            }
-        })
-        .collect();
-
-    // Execute battle phases
-    let battle_phases = [
-        BattlePhase::Start,
-        // Future: BattlePhase::BeforeAttack, BattlePhase::Attack, etc.
-    ];
-
-    // Execute initial phases
-    for &phase in &battle_phases {
-        execute_phase(
-            phase,
-            &mut player_units,
-            &mut enemy_units,
-            &mut events,
-            &mut rng,
-        );
-    }
-
-    // Main combat loop (simplified for now - just attack and hurt/faint)
-    while !player_units.is_empty() && !enemy_units.is_empty() {
-        execute_phase(
-            BattlePhase::Attack,
-            &mut player_units,
-            &mut enemy_units,
-            &mut events,
-            &mut rng,
-        );
-        execute_phase(
-            BattlePhase::HurtAndFaint,
-            &mut player_units,
-            &mut enemy_units,
-            &mut events,
-            &mut rng,
-        );
-    }
-
-    // Battle end
-    execute_phase(
-        BattlePhase::End,
-        &mut player_units,
-        &mut enemy_units,
-        &mut events,
-        &mut rng,
-    );
-
-    events
 }

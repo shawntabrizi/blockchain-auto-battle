@@ -24,7 +24,13 @@ pub enum AbilityEffect {
         attack: i32,
         target: AbilityTarget,
     },
-    // Future: Summon, RedirectDamage, etc.
+    /// Spawn a new unit on the board
+    SpawnUnit {
+        attack: i32,
+        health: i32,
+        name: String,
+    },
+    // Future: RedirectDamage, etc.
 }
 
 /// Ability target specifications

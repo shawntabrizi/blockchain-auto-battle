@@ -1,21 +1,21 @@
 use wasm_bindgen::prelude::*;
 
-mod types;
-mod state;
-mod engine;
-mod view;
 mod battle;
-mod opponents;
+mod engine;
 mod log;
+mod opponents;
+mod state;
+mod types;
+mod view;
 
 #[cfg(test)]
 mod tests;
 
-pub use engine::GameEngine;
-pub use types::*;
-pub use state::*;
-pub use view::*;
 pub use battle::*;
+pub use engine::GameEngine;
+pub use state::*;
+pub use types::*;
+pub use view::*;
 
 #[wasm_bindgen(start)]
 pub fn init() {
