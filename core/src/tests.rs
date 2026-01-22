@@ -338,6 +338,48 @@ mod tests {
     }
 
     #[test]
+    fn test_ability_spawn_on_faint() {
+        let spawn_ability = Ability {
+            trigger: AbilityTrigger::OnFaint,
+            effect: AbilityEffect::SpawnUnit {
+                attack: 1,
+                health: 1,
+                name: "Zombie Spawn".to_string(),
+            },
+            name: "Spawn Zombie".to_string(),
+            description: "Spawn a 1/1 Zombie Spawn when killed".to_string(),
+        };
+        let spawner = UnitCard::new(1, "zombie_soldier", "Zombie Soldier", 1, 1, 0, 0)
+            .with_ability(spawn_ability);
+
+        let player_board = vec![BoardUnit::from_card(spawner)];
+        let enemy_board = vec![BoardUnit::from_card(UnitCard::new(
+            2, "wolf", "Wolf", 3, 2, 0, 0,
+        ))];
+
+        let events = crate::battle::resolve_battle(&player_board, &enemy_board, 456);
+
+        // Find the UnitSpawn event
+        let spawn_event = events
+            .iter()
+            .find(|e| matches!(e, CombatEvent::UnitSpawn { .. }));
+        assert!(spawn_event.is_some(), "Should have UnitSpawn event");
+
+        if let Some(CombatEvent::UnitSpawn {
+            team, spawned_unit, ..
+        }) = spawn_event
+        {
+            assert_eq!(team, "PLAYER", "Spawned unit should be on player team");
+            assert_eq!(
+                spawned_unit.name, "Zombie Spawn",
+                "Spawned unit should have correct name"
+            );
+            assert_eq!(spawned_unit.attack, 1, "Spawned unit should have 1 attack");
+            assert_eq!(spawned_unit.health, 1, "Spawned unit should have 1 health");
+        }
+    }
+
+    #[test]
     fn test_ability_damage_all_enemies() {
         // Create a unit with OnStart damage to all enemies
         let ability = Ability {
