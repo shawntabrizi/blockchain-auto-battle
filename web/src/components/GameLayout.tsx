@@ -38,12 +38,19 @@ export function GameLayout() {
     return <GameOverScreen />;
   }
 
-  // Card panel is always visible during shop phase
-  const showCardPanel = view?.phase === 'shop';
+  // Card panel is visible during shop phase or when a board unit is selected
+  const showCardPanel = view?.phase === 'shop' || (selection?.type === 'board');
   const selectedCard =
     view?.phase === 'shop' && selection?.type === 'shop' && view?.shop[selection!.index]?.card
       ? view.shop[selection!.index].card!
       : null;
+
+  // For board selections, create a card-like object from the unit data
+  const selectedBoardUnit = selection?.type === 'board' && view?.board[selection!.index]
+    ? view.board[selection!.index]!
+    : null;
+
+  const cardToShow = selectedCard || selectedBoardUnit;
 
   return (
     <div className="h-full flex flex-col bg-board-bg">
@@ -60,8 +67,8 @@ export function GameLayout() {
         <Shop />
       </div>
 
-      {/* Card Detail Panel - Always visible during shop */}
-      <CardDetailPanel card={selectedCard} isVisible={showCardPanel} />
+      {/* Card Detail Panel - Visible during shop or board selection */}
+      <CardDetailPanel card={cardToShow} isVisible={showCardPanel} />
 
       {/* Battle Overlay */}
       <BattleOverlay />
