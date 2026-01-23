@@ -22,13 +22,16 @@ export type AbilityTarget =
   | 'lowestHealthEnemy'
   | 'highestAttackEnemy'
   | 'highestHealthEnemy'
-  | 'lowestAttackEnemy';
+  | 'lowestAttackEnemy'
+  | 'highestManaEnemy'
+  | 'lowestManaEnemy';
 
 export type AbilityEffect =
   | { type: 'damage'; amount: number; target: AbilityTarget }
   | { type: 'modifyStats'; health: number; attack: number; target: AbilityTarget }
   | { type: 'spawnUnit'; templateId: string }
-  | { type: 'killSpawn'; target: AbilityTarget; templateId: string };
+  | { type: 'killSpawn'; target: AbilityTarget; templateId: string }
+  | { type: 'destroy'; target: AbilityTarget };
 
 // Types matching the Rust view structs
 

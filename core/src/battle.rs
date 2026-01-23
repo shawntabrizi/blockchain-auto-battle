@@ -117,6 +117,7 @@ pub struct CombatUnit {
     pub name: String,
     pub attack_buff: i32,
     pub health_buff: i32,
+    pub play_cost: i32,
 }
 
 impl CombatUnit {
@@ -131,6 +132,7 @@ impl CombatUnit {
             name: card.name,
             attack_buff: 0,
             health_buff: 0,
+            play_cost: card.economy.play_cost,
         }
     }
 
@@ -707,6 +709,33 @@ fn apply_ability_effect(
             }
             Ok(damaged_units)
         }
+        AbilityEffect::Destroy { target } => {
+            let targets = get_targets(
+                source_instance_id,
+                source_team,
+                target,
+                player_units,
+                enemy_units,
+                rng,
+            );
+            for target_id in targets {
+                if let Some(unit) = find_unit_mut(&target_id, player_units, enemy_units) {
+                    let fatal = unit.health + 999;
+                    unit.health -= fatal;
+                    // We don't add to damaged_units because Destroy usually implies death
+                    // and we want to avoid redundant "Hurt" triggers if it's an absolute kill,
+                    // but for consistency with "Hurt triggers on death", maybe we should?
+                    // The prompt asked for "kills", so I'll treat it as massive damage.
+                    events.push(CombatEvent::AbilityDamage {
+                        source_instance_id: source_instance_id.to_string(),
+                        target_instance_id: target_id,
+                        damage: fatal,
+                        remaining_hp: unit.health,
+                    });
+                }
+            }
+            Ok(damaged_units)
+        }
     };
 
     limits.exit_recursion();
@@ -1173,6 +1202,32 @@ fn get_targets(
                 let mut target = &enemies[0];
                 for e in enemies.iter().skip(1) {
                     if e.effective_attack() < target.effective_attack() {
+                        target = e;
+                    }
+                }
+                vec![target.instance_id.clone()]
+            }
+        }
+        AbilityTarget::HighestManaEnemy => {
+            if enemies.is_empty() {
+                vec![]
+            } else {
+                let mut target = &enemies[0];
+                for e in enemies.iter().skip(1) {
+                    if e.play_cost > target.play_cost {
+                        target = e;
+                    }
+                }
+                vec![target.instance_id.clone()]
+            }
+        }
+        AbilityTarget::LowestManaEnemy => {
+            if enemies.is_empty() {
+                vec![]
+            } else {
+                let mut target = &enemies[0];
+                for e in enemies.iter().skip(1) {
+                    if e.play_cost < target.play_cost {
                         target = e;
                     }
                 }

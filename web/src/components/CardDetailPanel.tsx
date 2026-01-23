@@ -56,6 +56,7 @@ export function CardDetailPanel({ card, isVisible }: CardDetailPanelProps) {
         headhunter: '🕵️',
         giant_slayer: '🗡️',
         behemoth: '🐘',
+        mana_reaper: '⚖️',
       };
       return emojis[templateId] || '❓';
     };
@@ -89,6 +90,8 @@ export function CardDetailPanel({ card, isVisible }: CardDetailPanelProps) {
           return `Spawn a ${effect.templateId.replace('_', ' ')}`;
         case 'killSpawn':
           return `Kill ${getTargetDescription(effect.target)} to spawn a ${effect.templateId.replace('_', ' ')}`;
+        case 'destroy':
+          return `Destroy ${getTargetDescription(effect.target)}`;
         default:
           return JSON.stringify(effect);
       }
@@ -124,6 +127,10 @@ export function CardDetailPanel({ card, isVisible }: CardDetailPanelProps) {
           return 'the highest health enemy';
         case 'lowestAttackEnemy':
           return 'the lowest attack enemy';
+        case 'highestManaEnemy':
+          return 'the highest mana enemy';
+        case 'lowestManaEnemy':
+          return 'the lowest mana enemy';
         default:
           return target;
       }
