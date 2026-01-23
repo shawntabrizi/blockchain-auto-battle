@@ -315,5 +315,31 @@ pub fn get_starter_templates() -> Vec<CardTemplate> {
             pitch_value: 2,
             abilities: vec![],
         },
+        CardTemplate {
+            template_id: "zombie_captain",
+            name: "Zombie Captain",
+            attack: 3,
+            health: 4,
+            play_cost: 4,
+            pitch_value: 2,
+            abilities: vec![
+                Ability {
+                    trigger: crate::types::AbilityTrigger::OnFaint,
+                    effect: crate::types::AbilityEffect::SpawnUnit {
+                        template_id: "zombie_soldier".to_string(),
+                    },
+                    name: "Rally the Dead".to_string(),
+                    description: "Spawn a Zombie Soldier on death".to_string(),
+                },
+                Ability {
+                    trigger: crate::types::AbilityTrigger::OnFaint,
+                    effect: crate::types::AbilityEffect::SpawnUnit {
+                        template_id: "zombie_soldier".to_string(),
+                    },
+                    name: "Rally the Dead".to_string(),
+                    description: "Spawn a Zombie Soldier on death".to_string(),
+                },
+            ],
+        },
     ]
 }
