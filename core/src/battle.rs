@@ -1,9 +1,13 @@
+use crate::limits::BattleLimits;
 use crate::types::{Ability, AbilityEffect, AbilityTarget, AbilityTrigger, BoardUnit};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use rand::SeedableRng;
 use serde::{Deserialize, Serialize};
+
+// Re-export Team for backward compatibility
+pub use crate::limits::Team;
 
 // A unique ID for a unit instance in a battle
 pub type UnitInstanceId = String;
@@ -73,6 +77,11 @@ pub enum CombatEvent {
         spawned_unit: UnitView,
         new_board_state: Vec<UnitView>,
     },
+    #[serde(rename_all = "camelCase")]
+    LimitExceeded {
+        losing_team: String, // "PLAYER" or "ENEMY"
+        reason: String,
+    },
 }
 
 /// The deterministic battle simulation.
@@ -85,6 +94,7 @@ pub fn resolve_battle(
     let mut events = Vec::new();
     let mut rng = StdRng::seed_from_u64(seed);
     let mut instance_counter = 0;
+    let mut limits = BattleLimits::new();
 
     let mut player_units: Vec<CombatUnit> = player_board
         .iter()
@@ -127,70 +137,120 @@ pub fn resolve_battle(
 
     // Execute initial phases
     for &phase in &battle_phases {
-        execute_phase(
+        limits.reset_phase_counters();
+        if execute_phase(
             phase,
             &mut player_units,
             &mut enemy_units,
             &mut events,
             &mut rng,
-        );
+            &mut limits,
+        )
+        .is_err()
+            || limits.is_exceeded()
+        {
+            return finalize_with_limit_exceeded(&mut events, &limits);
+        }
     }
 
     // Main combat loop
     while !player_units.is_empty() && !enemy_units.is_empty() {
-        execute_phase(
+        limits.reset_phase_counters();
+        if execute_phase(
             BattlePhase::BeforeAttack,
             &mut player_units,
             &mut enemy_units,
             &mut events,
             &mut rng,
-        );
-        execute_phase(
+            &mut limits,
+        )
+        .is_err()
+            || limits.is_exceeded()
+        {
+            return finalize_with_limit_exceeded(&mut events, &limits);
+        }
+
+        limits.reset_phase_counters();
+        if execute_phase(
             BattlePhase::Attack,
             &mut player_units,
             &mut enemy_units,
             &mut events,
             &mut rng,
-        );
+            &mut limits,
+        )
+        .is_err()
+            || limits.is_exceeded()
+        {
+            return finalize_with_limit_exceeded(&mut events, &limits);
+        }
 
         // Death check - remove dead units and collect them for OnFaint processing
         let dead_units =
             execute_death_check_phase(&mut player_units, &mut enemy_units, &mut events);
 
-        execute_phase(
+        limits.reset_phase_counters();
+        if execute_phase(
             BattlePhase::AfterAttack,
             &mut player_units,
             &mut enemy_units,
             &mut events,
             &mut rng,
-        );
+            &mut limits,
+        )
+        .is_err()
+            || limits.is_exceeded()
+        {
+            return finalize_with_limit_exceeded(&mut events, &limits);
+        }
 
         // Hurt and faint - execute OnFaint abilities for units that died this turn
-        execute_hurt_and_faint_phase(
+        limits.reset_phase_counters();
+        if execute_hurt_and_faint_phase(
             dead_units,
             &mut player_units,
             &mut enemy_units,
             &mut events,
             &mut rng,
-        );
+            &mut limits,
+        )
+        .is_err()
+            || limits.is_exceeded()
+        {
+            return finalize_with_limit_exceeded(&mut events, &limits);
+        }
     }
 
     // Battle end
-    execute_phase(
+    let _ = execute_phase(
         BattlePhase::End,
         &mut player_units,
         &mut enemy_units,
         &mut events,
         &mut rng,
+        &mut limits,
     );
 
     events
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Team {
-    Player,
-    Enemy,
+/// Finalize the battle when a limit is exceeded
+fn finalize_with_limit_exceeded(
+    events: &mut Vec<CombatEvent>,
+    limits: &BattleLimits,
+) -> Vec<CombatEvent> {
+    let losing_team = limits.limit_exceeded_by.unwrap_or(Team::Player);
+    events.push(CombatEvent::LimitExceeded {
+        losing_team: losing_team.to_string(),
+        reason: limits.limit_exceeded_reason.clone().unwrap_or_default(),
+    });
+    events.push(CombatEvent::BattleEnd {
+        result: match losing_team {
+            Team::Player => "DEFEAT".to_string(),
+            Team::Enemy => "VICTORY".to_string(),
+        },
+    });
+    events.drain(..).collect()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -203,15 +263,6 @@ pub enum BattlePhase {
     HurtAndFaint,
     Knockout,
     End,
-}
-
-impl Team {
-    fn to_string(&self) -> String {
-        match self {
-            Team::Player => "PLAYER".to_string(),
-            Team::Enemy => "ENEMY".to_string(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -271,8 +322,11 @@ fn apply_ability_effect(
     enemy_units: &mut Vec<CombatUnit>,
     events: &mut Vec<CombatEvent>,
     rng: &mut StdRng,
-) {
-    match effect {
+    limits: &mut BattleLimits,
+) -> Result<(), ()> {
+    limits.enter_recursion(source_team)?;
+
+    let result = match effect {
         AbilityEffect::Damage { amount, target } => {
             let targets = get_targets(
                 source_instance_id,
@@ -294,6 +348,7 @@ fn apply_ability_effect(
                     });
                 }
             }
+            Ok(())
         }
         AbilityEffect::ModifyStats {
             health,
@@ -327,8 +382,12 @@ fn apply_ability_effect(
                     });
                 }
             }
+            Ok(())
         }
         AbilityEffect::SpawnUnit { template_id } => {
+            // Check spawn limit before spawning
+            limits.record_spawn(source_team)?;
+
             // Get all starter templates (this includes all units now)
             let templates = crate::units::get_starter_templates();
 
@@ -427,6 +486,9 @@ fn apply_ability_effect(
             });
 
             for (instance_id, team, _, effect, ability_name) in spawn_triggers {
+                // Check trigger limit
+                limits.record_trigger(team)?;
+
                 events.push(CombatEvent::AbilityTrigger {
                     source_instance_id: instance_id.clone(),
                     ability_name,
@@ -443,10 +505,15 @@ fn apply_ability_effect(
                     enemy_units,
                     events,
                     rng,
-                );
+                    limits,
+                )?;
             }
+            Ok(())
         }
-    }
+    };
+
+    limits.exit_recursion();
+    result
 }
 
 /// Get target instance IDs based on ability target type and source team
@@ -562,7 +629,8 @@ fn execute_phase(
     enemy_units: &mut Vec<CombatUnit>,
     events: &mut Vec<CombatEvent>,
     rng: &mut StdRng,
-) {
+    limits: &mut BattleLimits,
+) -> Result<(), ()> {
     let phase_name = match phase {
         BattlePhase::Start => "start",
         BattlePhase::BeforeAttack => "beforeAttack",
@@ -581,26 +649,28 @@ fn execute_phase(
     }
 
     // For now, only implement the phases we currently have
-    match phase {
+    let result = match phase {
         BattlePhase::Start => {
             // Start phase logic (OnStartBattle abilities)
-            execute_start_phase(player_units, enemy_units, events, rng);
+            execute_start_phase(player_units, enemy_units, events, rng, limits)
         }
         BattlePhase::BeforeAttack => {
             // Before attack phase logic
-            execute_before_attack_phase(player_units, enemy_units, events, rng);
+            execute_before_attack_phase(player_units, enemy_units, events, rng, limits)
         }
         BattlePhase::Attack => {
             // Handle attack phase
             execute_attack_phase(player_units, enemy_units, events, rng);
+            Ok(())
         }
         BattlePhase::DeathCheck => {
             // Remove dead units
             let _ = execute_death_check_phase(player_units, enemy_units, events);
+            Ok(())
         }
         BattlePhase::AfterAttack => {
             // Handle after attack effects
-            execute_after_attack_phase(player_units, enemy_units, events, rng);
+            execute_after_attack_phase(player_units, enemy_units, events, rng, limits)
         }
         BattlePhase::End => {
             // Battle end logic
@@ -611,16 +681,19 @@ fn execute_phase(
                 (false, false) => "DRAW".to_string(), // Should not happen
             };
             events.push(CombatEvent::BattleEnd { result });
-            return; // Don't emit PhaseEnd for End phase
+            return Ok(()); // Don't emit PhaseEnd for End phase
         }
         _ => {
             // Placeholder for other phases
+            Ok(())
         }
-    }
+    };
 
     events.push(CombatEvent::PhaseEnd {
         phase: phase_name.to_string(),
     });
+
+    result
 }
 
 /// Execute start-of-battle abilities
@@ -629,7 +702,8 @@ fn execute_start_phase(
     enemy_units: &mut Vec<CombatUnit>,
     events: &mut Vec<CombatEvent>,
     rng: &mut StdRng,
-) {
+    limits: &mut BattleLimits,
+) -> Result<(), ()> {
     // Collect trigger info (we need owned data to avoid borrow issues)
     let mut start_triggers: Vec<(String, Team, usize, AbilityEffect, String)> = player_units
         .iter()
@@ -663,6 +737,7 @@ fn execute_start_phase(
     });
 
     for (instance_id, team, _, effect, ability_name) in start_triggers {
+        limits.record_trigger(team)?;
         events.push(CombatEvent::AbilityTrigger {
             source_instance_id: instance_id.clone(),
             ability_name,
@@ -675,11 +750,13 @@ fn execute_start_phase(
             enemy_units,
             events,
             rng,
-        );
+            limits,
+        )?;
     }
 
     // Remove any units killed by OnStart abilities
-    remove_dead_units(player_units, enemy_units, events);
+    remove_dead_units(player_units, enemy_units, events, limits)?;
+    Ok(())
 }
 
 /// Execute attack phase (damage dealing)
@@ -729,7 +806,8 @@ fn execute_before_attack_phase(
     enemy_units: &mut Vec<CombatUnit>,
     events: &mut Vec<CombatEvent>,
     rng: &mut StdRng,
-) {
+    limits: &mut BattleLimits,
+) -> Result<(), ()> {
     // Trigger BeforeAttack abilities on front units
     if !player_units.is_empty() {
         let player_abilities: Vec<(String, AbilityEffect)> = player_units[0]
@@ -742,6 +820,7 @@ fn execute_before_attack_phase(
         for (ability_name, ability_effect) in player_abilities {
             let instance_id = player_units[0].instance_id.clone();
 
+            limits.record_trigger(Team::Player)?;
             events.push(CombatEvent::AbilityTrigger {
                 source_instance_id: instance_id.clone(),
                 ability_name,
@@ -754,7 +833,8 @@ fn execute_before_attack_phase(
                 enemy_units,
                 events,
                 rng,
-            );
+                limits,
+            )?;
         }
     }
 
@@ -769,6 +849,7 @@ fn execute_before_attack_phase(
         for (ability_name, ability_effect) in enemy_abilities {
             let instance_id = enemy_units[0].instance_id.clone();
 
+            limits.record_trigger(Team::Enemy)?;
             events.push(CombatEvent::AbilityTrigger {
                 source_instance_id: instance_id.clone(),
                 ability_name,
@@ -781,9 +862,11 @@ fn execute_before_attack_phase(
                 enemy_units,
                 events,
                 rng,
-            );
+                limits,
+            )?;
         }
     }
+    Ok(())
 }
 
 /// Execute after attack phase (abilities that trigger after attacking)
@@ -792,7 +875,8 @@ fn execute_after_attack_phase(
     enemy_units: &mut Vec<CombatUnit>,
     events: &mut Vec<CombatEvent>,
     rng: &mut StdRng,
-) {
+    limits: &mut BattleLimits,
+) -> Result<(), ()> {
     // Trigger AfterAttack abilities on units that just attacked (if they're still alive)
     // Note: We check if units are still at index 0 (they weren't killed in the attack)
     if !player_units.is_empty() {
@@ -806,6 +890,7 @@ fn execute_after_attack_phase(
         for (ability_name, ability_effect) in player_abilities {
             let instance_id = player_units[0].instance_id.clone();
 
+            limits.record_trigger(Team::Player)?;
             events.push(CombatEvent::AbilityTrigger {
                 source_instance_id: instance_id.clone(),
                 ability_name,
@@ -818,7 +903,8 @@ fn execute_after_attack_phase(
                 enemy_units,
                 events,
                 rng,
-            );
+                limits,
+            )?;
         }
     }
 
@@ -833,6 +919,7 @@ fn execute_after_attack_phase(
         for (ability_name, ability_effect) in enemy_abilities {
             let instance_id = enemy_units[0].instance_id.clone();
 
+            limits.record_trigger(Team::Enemy)?;
             events.push(CombatEvent::AbilityTrigger {
                 source_instance_id: instance_id.clone(),
                 ability_name,
@@ -845,9 +932,11 @@ fn execute_after_attack_phase(
                 enemy_units,
                 events,
                 rng,
-            );
+                limits,
+            )?;
         }
     }
+    Ok(())
 }
 
 /// Execute death check phase (remove units with 0 or less health)
@@ -893,13 +982,15 @@ fn execute_hurt_and_faint_phase(
     enemy_units: &mut Vec<CombatUnit>,
     events: &mut Vec<CombatEvent>,
     rng: &mut StdRng,
-) {
+    limits: &mut BattleLimits,
+) -> Result<(), ()> {
     let (player_dead, enemy_dead) = dead_units;
 
     // Execute OnFaint abilities for units that died this turn
     if let Some(dead_unit) = player_dead {
         for ability in &dead_unit.abilities {
             if ability.trigger == AbilityTrigger::OnFaint {
+                limits.record_trigger(Team::Player)?;
                 events.push(CombatEvent::AbilityTrigger {
                     source_instance_id: dead_unit.instance_id.clone(),
                     ability_name: ability.name.clone(),
@@ -912,7 +1003,8 @@ fn execute_hurt_and_faint_phase(
                     enemy_units,
                     events,
                     rng,
-                );
+                    limits,
+                )?;
             }
         }
     }
@@ -920,6 +1012,7 @@ fn execute_hurt_and_faint_phase(
     if let Some(dead_unit) = enemy_dead {
         for ability in &dead_unit.abilities {
             if ability.trigger == AbilityTrigger::OnFaint {
+                limits.record_trigger(Team::Enemy)?;
                 events.push(CombatEvent::AbilityTrigger {
                     source_instance_id: dead_unit.instance_id.clone(),
                     ability_name: ability.name.clone(),
@@ -932,20 +1025,28 @@ fn execute_hurt_and_faint_phase(
                     enemy_units,
                     events,
                     rng,
-                );
+                    limits,
+                )?;
             }
         }
     }
 
     // Remove any additional units killed by OnFaint abilities
-    remove_dead_units(player_units, enemy_units, events);
+    remove_dead_units(player_units, enemy_units, events, limits)?;
+    Ok(())
 }
 /// Remove any dead units (health <= 0) and emit death events
 fn remove_dead_units(
     player_units: &mut Vec<CombatUnit>,
     enemy_units: &mut Vec<CombatUnit>,
     events: &mut Vec<CombatEvent>,
-) {
+    limits: &mut BattleLimits,
+) -> Result<(), ()> {
+    // Check if limits were already exceeded
+    if limits.is_exceeded() {
+        return Err(());
+    }
+
     // Check for player deaths
     let player_had_deaths = player_units.iter().any(|u| u.health <= 0);
     player_units.retain(|u| u.health > 0);
@@ -965,4 +1066,5 @@ fn remove_dead_units(
             new_board_state: enemy_units.iter().map(|u| u.to_view()).collect(),
         });
     }
+    Ok(())
 }
