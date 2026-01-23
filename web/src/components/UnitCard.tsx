@@ -120,6 +120,8 @@ function getCardEmoji(templateId: string): string {
     orc_warrior: '⚔️',
     orc_shaman: '🔮',
     zombie_soldier: '🧟',
+    zombie_captain: '🧟‍♂️',
+    zombie_spawn: '👶',
     necromancer: '🧙',
     battle_hardened: '💪',
     troll_brute: '🧌',
