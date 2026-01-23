@@ -206,7 +206,7 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
     const isClashing = clashingUnitIds.includes(unit.instanceId);
 
     return (
-      <div key={unit.instanceId} className="relative">
+      <div key={`${unit.instanceId}-${index}`} className="relative">
         <div
           className={`transition-transform duration-200 ${isClashing ? (isPlayer ? 'clash-bump-right' : 'clash-bump-left') : ''}`}
         >
