@@ -202,6 +202,161 @@ mod tests {
     }
 
     #[test]
+    fn test_priority_tiebreaker_health() {
+        // SCENARIO: Same Attack (5), different Health.
+        // Unit A: 10 HP (Healthy)
+        // Unit B: 1 HP (Fragile)
+        // Expectation: High HP triggers first.
+
+        let healthy_unit = create_tester_unit(1, "Healthy", 5, 10, "HighHP");
+        let fragile_unit = create_tester_unit(2, "Fragile", 5, 1, "LowHP");
+
+        // Put fragile first in the array to ensure sorting reorders them
+        let player_board = vec![fragile_unit, healthy_unit];
+        let enemy_board = vec![create_dummy_enemy()];
+
+        let events = resolve_battle(&player_board, &enemy_board, 42);
+
+        let triggers: Vec<String> = events
+            .iter()
+            .filter_map(|e| {
+                if let CombatEvent::AbilityTrigger { ability_name, .. } = e {
+                    Some(ability_name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let high_idx = triggers
+            .iter()
+            .position(|n| n == "HighHP")
+            .expect("HighHP missing");
+        let low_idx = triggers
+            .iter()
+            .position(|n| n == "LowHP")
+            .expect("LowHP missing");
+
+        assert!(
+            high_idx < low_idx,
+            "High HP (10) should trigger before Low HP (1) when Attack is tied"
+        );
+    }
+
+    #[test]
+    fn test_priority_tiebreaker_team() {
+        // SCENARIO: Mirror Match.
+        // Player Unit: 5 Atk, 5 HP
+        // Enemy Unit:  5 Atk, 5 HP
+        // Expectation: Player triggers first.
+
+        let p_unit = create_tester_unit(1, "Player", 5, 5, "PlayerTrigger");
+
+        // Manually create enemy with ability (since create_tester_unit defaults to Player team)
+        let ability = Ability {
+            trigger: AbilityTrigger::OnStart,
+            effect: AbilityEffect::ModifyStats {
+                health: 1,
+                attack: 0,
+                target: AbilityTarget::SelfUnit,
+            },
+            name: "EnemyTrigger".to_string(),
+            description: "Test".to_string(),
+        };
+        let e_card = UnitCard::new(2, "Enemy", "Enemy", 5, 5, 0, 0).with_ability(ability);
+        let e_unit = BoardUnit::from_card(e_card);
+
+        let p_board = vec![p_unit];
+        let e_board = vec![e_unit];
+
+        let events = resolve_battle(&p_board, &e_board, 42);
+
+        let triggers: Vec<String> = events
+            .iter()
+            .filter_map(|e| {
+                if let CombatEvent::AbilityTrigger { ability_name, .. } = e {
+                    Some(ability_name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let p_idx = triggers
+            .iter()
+            .position(|n| n == "PlayerTrigger")
+            .expect("Player missing");
+        let e_idx = triggers
+            .iter()
+            .position(|n| n == "EnemyTrigger")
+            .expect("Enemy missing");
+
+        assert!(
+            p_idx < e_idx,
+            "Player should trigger before Enemy on full stat tie"
+        );
+    }
+
+    #[test]
+    fn test_priority_full_hierarchy() {
+        // U1: 10 Atk, 1 HP  (Enemy)  -> Should be #1 (Highest Attack)
+        // U2: 5 Atk, 10 HP  (Player) -> Should be #2 (High Health beat U3)
+        // U3: 5 Atk, 1 HP   (Player) -> Should be #3 (Player beat U4)
+        // U4: 5 Atk, 1 HP   (Enemy)  -> Should be #4 (Last)
+
+        // 1. High Attack Enemy
+        let ability_u1 = create_ability(
+            AbilityTrigger::OnStart,
+            AbilityEffect::ModifyStats {
+                health: 0,
+                attack: 0,
+                target: AbilityTarget::SelfUnit,
+            },
+            "U1",
+        );
+        let u1 = BoardUnit::from_card(
+            UnitCard::new(1, "U1", "U1", 10, 1, 0, 0).with_ability(ability_u1),
+        );
+
+        // 2. Mid Attack, High HP Player
+        let u2 = create_tester_unit(2, "U2", 5, 10, "U2");
+
+        // 3. Mid Attack, Low HP Player
+        let u3 = create_tester_unit(3, "U3", 5, 1, "U3");
+
+        // 4. Mid Attack, Low HP Enemy
+        let ability_u4 = create_ability(
+            AbilityTrigger::OnStart,
+            AbilityEffect::ModifyStats {
+                health: 0,
+                attack: 0,
+                target: AbilityTarget::SelfUnit,
+            },
+            "U4",
+        );
+        let u4 =
+            BoardUnit::from_card(UnitCard::new(4, "U4", "U4", 5, 1, 0, 0).with_ability(ability_u4));
+
+        let p_board = vec![u2, u3];
+        let e_board = vec![u1, u4];
+
+        let events = resolve_battle(&p_board, &e_board, 42);
+
+        let triggers: Vec<String> = events
+            .iter()
+            .filter_map(|e| {
+                if let CombatEvent::AbilityTrigger { ability_name, .. } = e {
+                    Some(ability_name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert_eq!(triggers, vec!["U1", "U2", "U3", "U4"]);
+    }
+
+    #[test]
     fn test_priority_interruption_kill() {
         // SCENARIO: "The Kill Steal"
         // Unit A (10 Atk) and Unit B (1 Atk) both try to hit the Front Enemy.
