@@ -100,8 +100,8 @@ struct PendingTrigger {
     effect: AbilityEffect,
     ability_name: String,
     priority_attack: i32,
+    priority_health: i32,
     is_from_dead: bool,
-    // Critical Fix: Track where the unit was so we can spawn token there
     spawn_index_override: Option<usize>,
 }
 
@@ -303,8 +303,25 @@ fn resolve_trigger_queue(
     rng: &mut StdRng,
     limits: &mut BattleLimits,
 ) -> Result<(), ()> {
-    // 1. Sort by Attack Priority
-    queue.sort_by(|a, b| a.priority_attack.cmp(&b.priority_attack));
+    // Trigger Priority:
+    // 1. Attack (Highest First)
+    // 2. Health (Highest First)
+    // 3. Team (Player First)
+    // Note: Since `pop()` takes from the END, we sort Ascending (Lowest -> Highest)
+    // This puts the "Winner" at the end of the vector.
+    queue.sort_by(|a, b| {
+        a.priority_attack
+            .cmp(&b.priority_attack)
+            .then(a.priority_health.cmp(&b.priority_health))
+            .then_with(|| {
+                // We want Player to be "Greater" than Enemy so it ends up at the back
+                match (a.team, b.team) {
+                    (Team::Enemy, Team::Player) => std::cmp::Ordering::Less,
+                    (Team::Player, Team::Enemy) => std::cmp::Ordering::Greater,
+                    _ => std::cmp::Ordering::Equal,
+                }
+            })
+    });
 
     // 2. Iterate
     while let Some(trigger) = queue.pop() {
@@ -353,6 +370,7 @@ fn resolve_trigger_queue(
                             effect: ability.effect.clone(),
                             ability_name: ability.name.clone(),
                             priority_attack: dead_unit.effective_attack(),
+                            priority_health: dead_unit.effective_health(),
                             is_from_dead: true,
                             spawn_index_override: Some(index), // Remember where it died!
                         });
@@ -632,6 +650,7 @@ fn collect_and_resolve_triggers(
                         effect: ability.effect.clone(),
                         ability_name: ability.name.clone(),
                         priority_attack: u.effective_attack(),
+                        priority_health: u.effective_health(),
                         is_from_dead: false,
                         spawn_index_override: None,
                     });
@@ -756,6 +775,7 @@ fn resolve_hurt_and_faint_loop(
                     effect: a.effect.clone(),
                     ability_name: a.name.clone(),
                     priority_attack: u.effective_attack(),
+                    priority_health: u.effective_health(),
                     is_from_dead: true,
                     spawn_index_override: Some(idx),
                 });
@@ -771,6 +791,7 @@ fn resolve_hurt_and_faint_loop(
                     effect: a.effect.clone(),
                     ability_name: a.name.clone(),
                     priority_attack: u.effective_attack(),
+                    priority_health: u.effective_health(),
                     is_from_dead: true,
                     spawn_index_override: Some(idx),
                 });
