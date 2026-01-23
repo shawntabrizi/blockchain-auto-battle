@@ -23,6 +23,7 @@ mod tests {
             name: name.to_string(),
             description: "Test Ability".to_string(),
             condition: crate::types::AbilityCondition::default(),
+            max_triggers: None,
         }
     }
 
@@ -102,6 +103,7 @@ mod tests {
             name: ability_name.to_string(),
             description: "Priority Test Ability".to_string(),
             condition: crate::types::AbilityCondition::default(),
+            max_triggers: None,
         };
 
         let card = UnitCard {
@@ -265,6 +267,7 @@ mod tests {
             name: "EnemyTrigger".to_string(),
             description: "Test".to_string(),
             condition: crate::types::AbilityCondition::default(),
+            max_triggers: None,
         };
         let e_card = UnitCard::new(2, "Enemy", "Enemy", 5, 5, 0, 0).with_ability(ability);
         let e_unit = BoardUnit::from_card(e_card);
@@ -602,6 +605,7 @@ mod tests {
             name: "KillShot".to_string(),
             description: "Deals 5 damage".to_string(),
             condition: crate::types::AbilityCondition::default(),
+            max_triggers: None,
         };
 
         let slow_ability = Ability {
@@ -613,6 +617,7 @@ mod tests {
             name: "LateShot".to_string(),
             description: "Deals 5 damage".to_string(),
             condition: crate::types::AbilityCondition::default(),
+            max_triggers: None,
         };
 
         // Construct Card A (Fast)
@@ -1926,19 +1931,26 @@ mod tests {
         // 1. Squire buffs Grunt (+2 HP). Grunt is now 2/4.
         // 2. Grunts clash (2 dmg). Grunt is back to 2/2.
         // This repeats forever. The engine must catch it.
-        
+
         let grunt = create_dummy_card(1, "Grunt", 2, 2);
         let squire = create_dummy_card(2, "Squire", 2, 3).with_ability(create_ability(
             AbilityTrigger::BeforeAnyAttack,
-            AbilityEffect::ModifyStats { health: 2, attack: 0, target: AbilityTarget::AllyAhead },
-            "SquireShield"
+            AbilityEffect::ModifyStats {
+                health: 2,
+                attack: 0,
+                target: AbilityTarget::AllyAhead,
+            },
+            "SquireShield",
         ));
-        
-        let p_board = vec![BoardUnit::from_card(grunt.clone()), BoardUnit::from_card(squire.clone())];
+
+        let p_board = vec![
+            BoardUnit::from_card(grunt.clone()),
+            BoardUnit::from_card(squire.clone()),
+        ];
         let e_board = vec![BoardUnit::from_card(grunt), BoardUnit::from_card(squire)];
-        
+
         let events = resolve_battle(&p_board, &e_board, 42);
-        
+
         // 1. Verify Battle End result is DRAW
         let last_event = events.last().unwrap();
         if let CombatEvent::BattleEnd { result } = last_event {
@@ -1946,10 +1958,15 @@ mod tests {
         } else {
             panic!("Battle did not end correctly: {:?}", last_event);
         }
-        
+
         // 2. Verify LimitExceeded event exists
-        let has_limit_exceeded = events.iter().any(|e| matches!(e, CombatEvent::LimitExceeded { .. }));
-        assert!(has_limit_exceeded, "Stalemate should trigger a LimitExceeded event");
+        let has_limit_exceeded = events
+            .iter()
+            .any(|e| matches!(e, CombatEvent::LimitExceeded { .. }));
+        assert!(
+            has_limit_exceeded,
+            "Stalemate should trigger a LimitExceeded event"
+        );
     }
 
     // ==========================================
@@ -1974,6 +1991,7 @@ mod tests {
                 name: "Emergency Heal".to_string(),
                 description: "Heal ally ahead if HP <= 6".to_string(),
                 condition: AbilityCondition::TargetHealthLessThanOrEqual { value: 6 },
+                max_triggers: None,
             })
         };
 
@@ -2041,6 +2059,7 @@ mod tests {
                 name: "Pack Tactics".to_string(),
                 description: "Buff all allies if 3+ allies".to_string(),
                 condition: AbilityCondition::AllyCountAtLeast { count: 3 },
+                max_triggers: None,
             })
         };
 
@@ -2090,7 +2109,10 @@ mod tests {
                 }
             });
 
-            assert!(!buff_triggered, "Pack Leader should NOT buff when < 3 allies");
+            assert!(
+                !buff_triggered,
+                "Pack Leader should NOT buff when < 3 allies"
+            );
         }
     }
 
@@ -2109,6 +2131,7 @@ mod tests {
                 name: "Last Stand".to_string(),
                 description: "Gain +5 attack if alone".to_string(),
                 condition: AbilityCondition::AllyCountAtMost { count: 1 },
+                max_triggers: None,
             })
         };
 
@@ -2130,7 +2153,10 @@ mod tests {
                 }
             });
 
-            assert!(buff_triggered, "Lone Wolf should trigger Last Stand when alone");
+            assert!(
+                buff_triggered,
+                "Lone Wolf should trigger Last Stand when alone"
+            );
         }
 
         // Test 2: With ally - should NOT trigger
@@ -2152,7 +2178,10 @@ mod tests {
                 }
             });
 
-            assert!(!buff_triggered, "Lone Wolf should NOT trigger Last Stand with allies");
+            assert!(
+                !buff_triggered,
+                "Lone Wolf should NOT trigger Last Stand with allies"
+            );
         }
     }
 
@@ -2174,6 +2203,7 @@ mod tests {
                     left: Box::new(AbilityCondition::SourceHealthLessThanOrEqual { value: 5 }),
                     right: Box::new(AbilityCondition::AllyCountAtLeast { count: 2 }),
                 },
+                max_triggers: None,
             })
         };
 
@@ -2217,7 +2247,168 @@ mod tests {
                 }
             });
 
-            assert!(!triggered, "Should NOT trigger when only one AND condition is met");
+            assert!(
+                !triggered,
+                "Should NOT trigger when only one AND condition is met"
+            );
         }
+    }
+
+    #[test]
+    fn test_max_triggers_limit() {
+        // SCENARIO: A unit has an OnDamageTaken ability with max_triggers: Some(2).
+        // It takes damage 3 times but the ability should only trigger twice.
+
+        // Create a unit that spawns a zombie when damaged, limited to 2 triggers
+        let create_limited_spawner = || {
+            let mut card = create_dummy_card(1, "LimitedSpawner", 1, 10);
+            card.abilities = vec![Ability {
+                trigger: AbilityTrigger::OnDamageTaken,
+                effect: AbilityEffect::ModifyStats {
+                    health: 0,
+                    attack: 1,
+                    target: AbilityTarget::SelfUnit,
+                },
+                name: "Limited Rage".to_string(),
+                description: "Gain +1 attack when hurt (max 2 times)".to_string(),
+                condition: AbilityCondition::default(),
+                max_triggers: Some(2), // Only trigger twice!
+            }];
+            card
+        };
+
+        // Create an enemy that deals 1 damage each clash (will hit multiple times)
+        let limited = create_limited_spawner();
+        let enemy = create_dummy_card(2, "Enemy", 1, 20); // Low damage, high HP to survive
+
+        let p_board = vec![BoardUnit::from_card(limited)];
+        let e_board = vec![BoardUnit::from_card(enemy)];
+
+        let events = resolve_battle(&p_board, &e_board, 42);
+
+        // Count how many times "Limited Rage" triggered
+        let trigger_count = events
+            .iter()
+            .filter(|e| {
+                if let CombatEvent::AbilityTrigger { ability_name, .. } = e {
+                    ability_name == "Limited Rage"
+                } else {
+                    false
+                }
+            })
+            .count();
+
+        assert_eq!(
+            trigger_count, 2,
+            "Limited Rage should only trigger 2 times despite taking damage multiple times"
+        );
+    }
+
+    #[test]
+    fn test_max_triggers_unlimited() {
+        // SCENARIO: A unit has an OnDamageTaken ability with max_triggers: None (unlimited).
+        // It should trigger every time it takes damage.
+
+        let create_unlimited_rager = || {
+            let mut card = create_dummy_card(1, "UnlimitedRager", 1, 10);
+            card.abilities = vec![Ability {
+                trigger: AbilityTrigger::OnDamageTaken,
+                effect: AbilityEffect::ModifyStats {
+                    health: 0,
+                    attack: 1,
+                    target: AbilityTarget::SelfUnit,
+                },
+                name: "Unlimited Rage".to_string(),
+                description: "Gain +1 attack when hurt (unlimited)".to_string(),
+                condition: AbilityCondition::default(),
+                max_triggers: None, // Unlimited
+            }];
+            card
+        };
+
+        let unlimited = create_unlimited_rager();
+        let enemy = create_dummy_card(2, "Enemy", 1, 20);
+
+        let p_board = vec![BoardUnit::from_card(unlimited)];
+        let e_board = vec![BoardUnit::from_card(enemy)];
+
+        let events = resolve_battle(&p_board, &e_board, 42);
+
+        // Count how many times "Unlimited Rage" triggered
+        let trigger_count = events
+            .iter()
+            .filter(|e| {
+                if let CombatEvent::AbilityTrigger { ability_name, .. } = e {
+                    ability_name == "Unlimited Rage"
+                } else {
+                    false
+                }
+            })
+            .count();
+
+        // With 10 HP and enemy dealing 1 damage per clash, player should survive 9 clashes
+        // (dies on the 10th), so it should trigger at least several times
+        assert!(
+            trigger_count > 2,
+            "Unlimited Rage should trigger more than 2 times, got {}",
+            trigger_count
+        );
+    }
+
+    #[test]
+    fn test_max_triggers_not_exceeded_on_death() {
+        // SCENARIO: A unit has OnDamageTaken with max_triggers: Some(2).
+        // It takes damage twice (reaching max), then takes fatal damage.
+        // The fatal damage should NOT trigger the ability a 3rd time.
+
+        // Create a unit with low HP that will die after a few hits
+        let create_limited_unit = || {
+            let mut card = create_dummy_card(1, "LimitedUnit", 1, 4);
+            card.abilities = vec![Ability {
+                trigger: AbilityTrigger::OnDamageTaken,
+                effect: AbilityEffect::ModifyStats {
+                    health: 0,
+                    attack: 1,
+                    target: AbilityTarget::SelfUnit,
+                },
+                name: "Limited Buff".to_string(),
+                description: "Gain +1 attack when hurt (max 2 times)".to_string(),
+                condition: AbilityCondition::default(),
+                max_triggers: Some(2),
+            }];
+            card
+        };
+
+        // Enemy deals 2 damage per hit: 4 HP -> 2 HP (trigger 1) -> 0 HP (trigger 2? NO - max reached)
+        // Actually with 2 damage per hit: 4 -> 2 (hit 1, trigger) -> 0 (hit 2, should NOT trigger again after max)
+        // Let's use 1 damage hits to be more precise:
+        // 4 -> 3 (trigger 1) -> 2 (trigger 2, max reached) -> 1 -> 0 (death, should NOT trigger)
+
+        let limited = create_limited_unit();
+        let enemy = create_dummy_card(2, "Enemy", 1, 20); // 1 damage per clash, high HP
+
+        let p_board = vec![BoardUnit::from_card(limited)];
+        let e_board = vec![BoardUnit::from_card(enemy)];
+
+        let events = resolve_battle(&p_board, &e_board, 42);
+
+        // Count triggers
+        let trigger_count = events
+            .iter()
+            .filter(|e| {
+                if let CombatEvent::AbilityTrigger { ability_name, .. } = e {
+                    ability_name == "Limited Buff"
+                } else {
+                    false
+                }
+            })
+            .count();
+
+        // Should trigger exactly 2 times, not 3 or 4 (death should not add extra trigger)
+        assert_eq!(
+            trigger_count, 2,
+            "Limited Buff should trigger exactly 2 times even when dying, got {}",
+            trigger_count
+        );
     }
 }
