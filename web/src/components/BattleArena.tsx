@@ -65,11 +65,14 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
   }, [playbackSpeed]);
 
   useEffect(() => {
+    console.log({ battleOutput });
+  }, [battleOutput]);
+
+  useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const processNextEvent = () => {
       if (eventIndex >= battleOutput.events.length) {
-        console.log({ battleOutput });
         onBattleEnd();
         return;
       }
