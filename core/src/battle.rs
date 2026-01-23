@@ -754,7 +754,9 @@ fn resolve_trigger_queue(
         }
 
         // Recursively resolve any new triggers (including the OnFaint ones we just added)
+        limits.enter_trigger_depth(trigger.team)?;
         resolve_trigger_queue(queue, player_units, enemy_units, events, rng, limits)?;
+        limits.exit_trigger_depth();
     }
 
     Ok(())
