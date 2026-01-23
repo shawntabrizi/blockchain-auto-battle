@@ -150,6 +150,10 @@ pub struct Ability {
     /// If None or AbilityCondition::None, the ability always triggers.
     #[serde(default, skip_serializing_if = "is_condition_none")]
     pub condition: AbilityCondition,
+    /// Optional limit on how many times this ability can trigger per battle.
+    /// If None, the ability can trigger unlimited times.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_triggers: Option<u32>,
 }
 
 fn is_condition_none(c: &AbilityCondition) -> bool {

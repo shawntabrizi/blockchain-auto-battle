@@ -54,7 +54,7 @@ impl BattleLimits {
         self.total_rounds += 1;
         if self.total_rounds > MAX_BATTLE_ROUNDS {
             // Draws don't attribute to a specific team
-            self.limit_exceeded_by = None; 
+            self.limit_exceeded_by = None;
             self.limit_exceeded_reason = Some(format!(
                 "Battle round limit reached (max {})",
                 MAX_BATTLE_ROUNDS
