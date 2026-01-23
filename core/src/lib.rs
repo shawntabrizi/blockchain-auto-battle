@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 
 mod battle;
 mod engine;
+mod limits;
 mod log;
 mod opponents;
 mod state;
