@@ -36,6 +36,8 @@ pub enum AbilityEffect {
         target: AbilityTarget,
         template_id: String,
     },
+    /// Destroy a target directly
+    Destroy { target: AbilityTarget },
     // Future: RedirectDamage, etc.
 }
 
@@ -57,6 +59,8 @@ pub enum AbilityTarget {
     HighestAttackEnemy,
     HighestHealthEnemy,
     LowestAttackEnemy,
+    HighestManaEnemy,
+    LowestManaEnemy,
 }
 
 /// A unit ability

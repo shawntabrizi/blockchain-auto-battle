@@ -141,6 +141,7 @@ function getCardEmoji(templateId: string): string {
     headhunter: '🕵️',
     giant_slayer: '🗡️',
     behemoth: '🐘',
+    mana_reaper: '⚖️',
   };
   return emojis[templateId] || '❓';
 }

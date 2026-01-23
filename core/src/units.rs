@@ -491,5 +491,31 @@ pub fn get_starter_templates() -> Vec<CardTemplate> {
             pitch_value: 2,
             abilities: vec![],
         },
+        CardTemplate {
+            template_id: "mana_reaper",
+            name: "Mana Reaper",
+            attack: 2,
+            health: 2,
+            play_cost: 8,
+            pitch_value: 2,
+            abilities: vec![
+                Ability {
+                    trigger: crate::types::AbilityTrigger::OnStart,
+                    effect: crate::types::AbilityEffect::Destroy {
+                        target: crate::types::AbilityTarget::HighestManaEnemy,
+                    },
+                    name: "Harvest the Rich".to_string(),
+                    description: "Destroy the highest mana cost enemy".to_string(),
+                },
+                Ability {
+                    trigger: crate::types::AbilityTrigger::OnStart,
+                    effect: crate::types::AbilityEffect::Destroy {
+                        target: crate::types::AbilityTarget::LowestManaEnemy,
+                    },
+                    name: "Cull the Weak".to_string(),
+                    description: "Destroy the lowest mana cost enemy".to_string(),
+                },
+            ],
+        },
     ]
 }
