@@ -1,4 +1,4 @@
-use crate::limits::BattleLimits;
+use crate::limits::{BattleLimits, LimitReason};
 use crate::state::BOARD_SIZE;
 use crate::types::{
     Ability, AbilityCondition, AbilityEffect, AbilityTarget, AbilityTrigger, BoardUnit,
@@ -69,9 +69,9 @@ pub enum BattleResult {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum CombatEvent {
     #[serde(rename_all = "camelCase")]
-    PhaseStart { phase: String },
+    PhaseStart { phase: BattlePhase },
     #[serde(rename_all = "camelCase")]
-    PhaseEnd { phase: String },
+    PhaseEnd { phase: BattlePhase },
     #[serde(rename_all = "camelCase")]
     AbilityTrigger {
         source_instance_id: UnitInstanceId,
@@ -119,11 +119,12 @@ pub enum CombatEvent {
     #[serde(rename_all = "camelCase")]
     LimitExceeded {
         losing_team: Option<Team>,
-        reason: String,
+        reason: LimitReason,
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BattlePhase {
     Start,
     BeforeAttack,
@@ -337,10 +338,12 @@ fn finalize_with_limit_exceeded(
 ) -> Vec<CombatEvent> {
     let losing_team = limits.limit_exceeded_by;
 
-    events.push(CombatEvent::LimitExceeded {
-        losing_team,
-        reason: limits.limit_exceeded_reason.clone().unwrap_or_default(),
-    });
+    if let Some(reason) = &limits.limit_exceeded_reason {
+        events.push(CombatEvent::LimitExceeded {
+            losing_team,
+            reason: reason.clone(),
+        });
+    }
 
     events.push(CombatEvent::BattleEnd {
         result: match losing_team {
@@ -848,12 +851,8 @@ fn execute_phase(
     rng: &mut StdRng,
     limits: &mut BattleLimits,
 ) -> Result<(), ()> {
-    let phase_name = format!("{:?}", phase); // Quick debug name
-
     if phase != BattlePhase::End {
-        events.push(CombatEvent::PhaseStart {
-            phase: phase_name.clone(),
-        });
+        events.push(CombatEvent::PhaseStart { phase });
     }
 
     match phase {
@@ -909,7 +908,7 @@ fn execute_phase(
     }
 
     if phase != BattlePhase::End {
-        events.push(CombatEvent::PhaseEnd { phase: phase_name });
+        events.push(CombatEvent::PhaseEnd { phase });
     }
     Ok(())
 }

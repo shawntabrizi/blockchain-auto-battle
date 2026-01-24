@@ -117,10 +117,18 @@ export interface UnitView {
 
 export type Team = 'PLAYER' | 'ENEMY';
 export type BattleResult = 'VICTORY' | 'DEFEAT' | 'DRAW';
+export type BattlePhase = 'START' | 'BEFORE_ATTACK' | 'ATTACK' | 'AFTER_ATTACK' | 'END';
+
+export type LimitReason =
+  | { type: 'ROUND_LIMIT'; payload: { current: number; max: number } }
+  | { type: 'RECURSION_LIMIT'; payload: { current: number; max: number } }
+  | { type: 'SPAWN_LIMIT'; payload: { current: number; max: number } }
+  | { type: 'TRIGGER_LIMIT'; payload: { current: number; max: number } }
+  | { type: 'TRIGGER_DEPTH_LIMIT'; payload: { current: number; max: number } };
 
 export type CombatEvent =
-  | { type: 'phaseStart'; payload: { phase: string } }
-  | { type: 'phaseEnd'; payload: { phase: string } }
+  | { type: 'phaseStart'; payload: { phase: BattlePhase } }
+  | { type: 'phaseEnd'; payload: { phase: BattlePhase } }
   | { type: 'abilityTrigger'; payload: { sourceInstanceId: number; abilityName: string } }
   | { type: 'clash'; payload: { pDmg: number; eDmg: number } }
   | {
@@ -156,7 +164,7 @@ export type CombatEvent =
       type: 'limitExceeded';
       payload: {
         losingTeam: Team | null;
-        reason: string;
+        reason: LimitReason;
       };
     };
 
