@@ -16,6 +16,16 @@ pub enum Team {
     Enemy,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type", content = "payload", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum LimitReason {
+    RoundLimit { current: u32, max: u32 },
+    RecursionLimit { current: u32, max: u32 },
+    SpawnLimit { current: u32, max: u32 },
+    TriggerLimit { current: u32, max: u32 },
+    TriggerDepthLimit { current: u32, max: u32 },
+}
+
 /// Tracks execution limits to prevent infinite loops and stack overflows
 #[derive(Debug, Clone)]
 pub struct BattleLimits {
@@ -26,7 +36,7 @@ pub struct BattleLimits {
     pub total_rounds: u32,
     pub current_executing_team: Option<Team>,
     pub limit_exceeded_by: Option<Team>,
-    pub limit_exceeded_reason: Option<String>,
+    pub limit_exceeded_reason: Option<LimitReason>,
     pub next_player_index: u32,
     pub next_enemy_index: u32,
 }
@@ -52,10 +62,10 @@ impl BattleLimits {
         if self.total_rounds > MAX_BATTLE_ROUNDS {
             // Draws don't attribute to a specific team
             self.limit_exceeded_by = None;
-            self.limit_exceeded_reason = Some(format!(
-                "Battle round limit reached (max {})",
-                MAX_BATTLE_ROUNDS
-            ));
+            self.limit_exceeded_reason = Some(LimitReason::RoundLimit {
+                current: self.total_rounds,
+                max: MAX_BATTLE_ROUNDS,
+            });
             return Err(());
         }
         Ok(())
@@ -89,10 +99,10 @@ impl BattleLimits {
         self.recursion_depth += 1;
         if self.recursion_depth > MAX_RECURSION_DEPTH {
             self.limit_exceeded_by = Some(team);
-            self.limit_exceeded_reason = Some(format!(
-                "Recursion depth exceeded (max {})",
-                MAX_RECURSION_DEPTH
-            ));
+            self.limit_exceeded_reason = Some(LimitReason::RecursionLimit {
+                current: self.recursion_depth,
+                max: MAX_RECURSION_DEPTH,
+            });
             return Err(());
         }
         Ok(())
@@ -109,10 +119,10 @@ impl BattleLimits {
         self.total_spawns += 1;
         if self.total_spawns > MAX_SPAWNS_PER_BATTLE {
             self.limit_exceeded_by = Some(team);
-            self.limit_exceeded_reason = Some(format!(
-                "Spawn limit exceeded (max {})",
-                MAX_SPAWNS_PER_BATTLE
-            ));
+            self.limit_exceeded_reason = Some(LimitReason::SpawnLimit {
+                current: self.total_spawns,
+                max: MAX_SPAWNS_PER_BATTLE,
+            });
             return Err(());
         }
         Ok(())
@@ -123,10 +133,10 @@ impl BattleLimits {
         self.phase_triggers += 1;
         if self.phase_triggers > MAX_TRIGGERS_PER_PHASE {
             self.limit_exceeded_by = Some(team);
-            self.limit_exceeded_reason = Some(format!(
-                "Trigger limit exceeded (max {} per phase)",
-                MAX_TRIGGERS_PER_PHASE
-            ));
+            self.limit_exceeded_reason = Some(LimitReason::TriggerLimit {
+                current: self.phase_triggers,
+                max: MAX_TRIGGERS_PER_PHASE,
+            });
             return Err(());
         }
         Ok(())
@@ -137,10 +147,10 @@ impl BattleLimits {
         self.trigger_depth += 1;
         if self.trigger_depth > MAX_TRIGGER_DEPTH {
             self.limit_exceeded_by = Some(team);
-            self.limit_exceeded_reason = Some(format!(
-                "Trigger depth exceeded (max {})",
-                MAX_TRIGGER_DEPTH
-            ));
+            self.limit_exceeded_reason = Some(LimitReason::TriggerDepthLimit {
+                current: self.trigger_depth,
+                max: MAX_TRIGGER_DEPTH,
+            });
             return Err(());
         }
         Ok(())
