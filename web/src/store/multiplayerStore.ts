@@ -102,7 +102,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
           });
       });
 
-      conn.on('data', (data) => {
+      conn.on('data', (_data) => {
            // We'll let the MultiplayerManager handle the routing of data
       });
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameView, BattleOutput, Selection, BattleResult, CombatEvent } from '../types';
+import type { GameView, BattleOutput, Selection } from '../types';
 import type { GameEngine } from '../wasm/manalimit_core';
 
 type GameEngineInstance = GameEngine;
@@ -184,7 +184,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   // Multiplayer Actions
-  startMultiplayerGame: (seed: number) => {
+  startMultiplayerGame: (_seed: number) => {
     const { engine } = get();
     if (!engine) return;
     try {
