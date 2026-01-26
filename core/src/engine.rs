@@ -275,6 +275,110 @@ impl GameEngine {
         self.fill_shop();
         self.log_state();
     }
+
+    /// Get the full game state as JSON (for P2P sync)
+    #[wasm_bindgen]
+    pub fn get_state(&self) -> JsValue {
+        match serde_wasm_bindgen::to_value(&self.state) {
+            Ok(val) => val,
+            Err(e) => {
+                log::error(&format!("get_state serialization failed: {:?}", e));
+                JsValue::NULL
+            }
+        }
+    }
+
+    /// Overwrite the game state from JSON (for P2P sync)
+    #[wasm_bindgen]
+    pub fn set_state(&mut self, state_val: JsValue) -> Result<(), String> {
+        let state: GameState = serde_wasm_bindgen::from_value(state_val)
+            .map_err(|e| format!("Failed to parse state: {:?}", e))?;
+        self.state = state;
+        Ok(())
+    }
+
+    /// Get the current board state (for P2P sync)
+    #[wasm_bindgen]
+    pub fn get_board(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.state.board).unwrap_or(JsValue::NULL)
+    }
+
+    /// Resolve a battle between two arbitrary boards (for P2P)
+    /// Returns BattleOutput JSON
+    #[wasm_bindgen]
+    pub fn resolve_battle_p2p(
+        &self,
+        player_board_val: JsValue,
+        enemy_board_val: JsValue,
+        seed: u64,
+    ) -> Result<JsValue, String> {
+        let player_board_raw: Vec<Option<BoardUnit>> =
+            serde_wasm_bindgen::from_value(player_board_val)
+                .map_err(|e| format!("Failed to parse player board: {:?}", e))?;
+        let enemy_board_raw: Vec<Option<BoardUnit>> =
+            serde_wasm_bindgen::from_value(enemy_board_val)
+                .map_err(|e| format!("Failed to parse enemy board: {:?}", e))?;
+
+        let player_board: Vec<BoardUnit> = player_board_raw.into_iter().flatten().collect();
+        let enemy_board: Vec<BoardUnit> = enemy_board_raw.into_iter().flatten().collect();
+
+        let mut rng = XorShiftRng::seed_from_u64(seed);
+        let events = resolve_battle(&player_board, &enemy_board, &mut rng);
+
+        // Generate initial views for UI
+        let mut instance_counter: u32 = 0;
+        let initial_player_units: Vec<UnitView> = player_board
+            .iter()
+            .map(|u| {
+                instance_counter += 1;
+                UnitView {
+                    instance_id: UnitId::player(instance_counter),
+                    template_id: u.card.template_id.clone(),
+                    name: u.card.name.clone(),
+                    attack: u.card.stats.attack,
+                    health: u.current_health,
+                    abilities: u.card.abilities.clone(),
+                }
+            })
+            .collect();
+
+        instance_counter = 0;
+        let initial_enemy_units: Vec<UnitView> = enemy_board
+            .iter()
+            .map(|u| {
+                instance_counter += 1;
+                UnitView {
+                    instance_id: UnitId::enemy(instance_counter),
+                    template_id: u.card.template_id.clone(),
+                    name: u.card.name.clone(),
+                    attack: u.card.stats.attack,
+                    health: u.current_health,
+                    abilities: u.card.abilities.clone(),
+                }
+            })
+            .collect();
+
+        let output = BattleOutput {
+            events,
+            initial_player_units,
+            initial_enemy_units,
+        };
+
+        serde_wasm_bindgen::to_value(&output).map_err(|e| format!("Serialization failed: {:?}", e))
+    }
+    /// Apply a battle result to the game state (for P2P)
+    #[wasm_bindgen]
+    pub fn apply_battle_result(&mut self, result_val: JsValue) -> Result<(), String> {
+        let result: crate::battle::BattleResult = serde_wasm_bindgen::from_value(result_val)
+            .map_err(|e| format!("Failed to parse result: {:?}", e))?;
+
+        match result {
+            crate::battle::BattleResult::Victory => self.state.wins += 1,
+            crate::battle::BattleResult::Defeat => self.state.lives -= 1,
+            _ => {}
+        }
+        Ok(())
+    }
 }
 
 // Private implementation methods
