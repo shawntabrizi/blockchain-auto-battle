@@ -97,6 +97,7 @@ export interface GameView {
   lives: number;
   wins: number;
   phase: 'shop' | 'battle' | 'victory' | 'defeat';
+  bag: CardView[];
   bagCount: number;
   canAfford: boolean[];
 }
@@ -173,7 +174,7 @@ export interface BattleOutput {
 }
 
 // Selection state for UI
-export type SelectionType = 'hand' | 'board';
+export type SelectionType = 'hand' | 'board' | 'bag';
 
 export interface Selection {
   type: SelectionType;

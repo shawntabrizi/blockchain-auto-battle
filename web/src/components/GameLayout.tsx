@@ -3,11 +3,12 @@ import { Arena } from './Arena';
 import { Shop } from './Shop';
 import { CardDetailPanel } from './CardDetailPanel';
 import { BattleOverlay } from './BattleOverlay';
+import { BagOverlay } from './BagOverlay';
 import { GameOverScreen } from './GameOverScreen';
 import { useGameStore } from '../store/gameStore';
 
 export function GameLayout() {
-  const { view, selection, isLoading, error } = useGameStore();
+  const { view, selection, isLoading, error, showBag } = useGameStore();
 
   if (isLoading) {
     return (
@@ -39,11 +40,13 @@ export function GameLayout() {
   }
 
   // Card panel is visible during shop phase or when a board unit is selected
-  const showCardPanel = view?.phase === 'shop' || (selection?.type === 'board');
+  const showCardPanel = view?.phase === 'shop' || (selection?.type === 'board') || showBag;
   const selectedCard =
-    view?.phase === 'shop' && selection?.type === 'hand' && view?.hand[selection!.index]
+    (view?.phase === 'shop' && selection?.type === 'hand' && view?.hand[selection!.index])
       ? view.hand[selection!.index]!
-      : null;
+      : (selection?.type === 'bag' && view?.bag[selection!.index])
+        ? view.bag[selection!.index]
+        : null;
 
   // For board selections, create a card-like object from the unit data
   const selectedBoardUnit = selection?.type === 'board' && view?.board[selection!.index]
@@ -72,6 +75,7 @@ export function GameLayout() {
 
       {/* Battle Overlay */}
       <BattleOverlay />
+      <BagOverlay />
     </div>
   );
 }

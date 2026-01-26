@@ -1,9 +1,23 @@
+import { useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useMultiplayerStore } from '../store/multiplayerStore';
 
 export function HUD() {
-  const { view, endTurn, engine } = useGameStore();
+  const { view, endTurn, engine, setShowBag, showBag } = useGameStore();
   const { status, setIsReady, sendMessage, isReady, opponentReady } = useMultiplayerStore();
+  // Keyboard shortcut for Bag view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'b') {
+        setShowBag(!showBag);
+      } else if (e.key === 'Escape') {
+        setShowBag(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setShowBag, showBag]);
+
 
   if (!view) return null;
 
@@ -44,6 +58,15 @@ export function HUD() {
         </div>
 
         {view.phase === 'shop' && (
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={() => setShowBag(true)}
+          className="btn bg-gray-800 hover:bg-gray-700 text-white border-gray-600 flex items-center gap-2 px-4"
+          title="View your bag"
+        >
+          <span className="text-xl">🎒</span>
+          <span className="font-bold">{view.bagCount}</span>
+        </button>
           <button 
             onClick={handleEndTurn} 
             disabled={isWaiting}
@@ -51,6 +74,7 @@ export function HUD() {
           >
             {isWaiting ? 'Waiting...' : 'Battle!'}
           </button>
+      </div>
         )}
       </div>
 

@@ -98,6 +98,8 @@ pub struct GameView {
     pub wins: i32,
     /// Current game phase
     pub phase: String,
+    /// All cards currently in the bag
+    pub bag: Vec<CardView>,
     /// Cards remaining in bag
     pub bag_count: u32,
     /// Whether we can afford each hand card
@@ -152,6 +154,7 @@ impl GameView {
                 GamePhase::Victory => String::from("victory"),
                 GamePhase::Defeat => String::from("defeat"),
             },
+            bag: state.bag.iter().map(CardView::from).collect(),
             bag_count: state.bag.len() as u32,
             can_afford,
         }

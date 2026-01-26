@@ -20,6 +20,7 @@ interface GameStore {
   selection: Selection | null;
   showBattleOverlay: boolean;
   showRawJson: boolean;
+  showBag: boolean;
 
   init: () => Promise<void>;
   pitchHandCard: (index: number) => void;
@@ -32,6 +33,7 @@ interface GameStore {
   setSelection: (selection: Selection | null) => void;
   closeBattleOverlay: () => void;
   toggleShowRawJson: () => void;
+  setShowBag: (show: boolean) => void;
 
   startMultiplayerGame: (seed: number) => void;
   resolveMultiplayerBattle: (opponentBoard: any, seed: number) => void;
@@ -48,6 +50,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selection: null,
   showBattleOverlay: false,
   showRawJson: JSON.parse(localStorage.getItem('showRawJson') || 'false'),
+  showBag: false,
 
   init: async () => {
     if (get().engine) return;
@@ -163,6 +166,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setSelection: (selection: Selection | null) => { set({ selection }); },
   closeBattleOverlay: () => { set({ showBattleOverlay: false }); },
+  setShowBag: (show: boolean) => { set({ showBag: show }); },
   toggleShowRawJson: () => {
     set((state) => {
       const newValue = !state.showRawJson;
