@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { toast } from 'react-hot-toast';
 import type { GameView, BattleOutput, Selection } from '../types';
 import type { GameEngine } from '../wasm/manalimit_core';
 
@@ -96,6 +97,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       engine.buy_card(shopIndex);
       set({ view: engine.get_view(), selection: null });
     } catch (err) {
+      toast.error("Not enough mana!");
       console.error('Failed to buy card:', err);
     }
   },
