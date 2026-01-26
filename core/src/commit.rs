@@ -67,43 +67,55 @@ pub fn verify_and_apply_turn(state: &mut GameState, action: &CommitTurnAction) -
         }
     }
 
-    // 3. Mana check
-    let mana_from_hand_pitch: i32 = action
+    let total_mana_earned_unfiltered: i32 = action
         .pitched_from_hand
         .iter()
         .map(|&hi_u32| {
             let bag_idx = hand_indices[hi_u32 as usize];
             state.bag[bag_idx].economy.pitch_value
         })
-        .sum();
-
-    let mana_from_board_pitch: i32 = action
-        .pitched_from_board
-        .iter()
-        .map(|&bi_u32| {
-            state.board[bi_u32 as usize]
-                .as_ref()
-                .map(|u| u.card.economy.pitch_value)
-                .unwrap_or(0)
-        })
-        .sum();
-
-    let total_mana_earned = (mana_from_hand_pitch + mana_from_board_pitch).min(state.mana_limit);
+        .sum::<i32>()
+        + action
+            .pitched_from_board
+            .iter()
+            .map(|&bi_u32| {
+                state.board[bi_u32 as usize]
+                    .as_ref()
+                    .map(|u| u.card.economy.pitch_value)
+                    .unwrap_or(0)
+            })
+            .sum::<i32>();
 
     let total_play_cost: i32 = action
         .played_from_hand
         .iter()
         .map(|&hi_u32| {
             let bag_idx = hand_indices[hi_u32 as usize];
-            state.bag[bag_idx].economy.play_cost
+            let cost = state.bag[bag_idx].economy.play_cost;
+            cost
         })
         .sum();
 
-    if total_mana_earned < total_play_cost {
+    // Verification:
+    // 1. Total spent cannot exceed total earned (from all pitches)
+    if total_mana_earned_unfiltered < total_play_cost {
         return Err(GameError::NotEnoughMana {
-            have: total_mana_earned,
+            have: total_mana_earned_unfiltered,
             need: total_play_cost,
         });
+    }
+
+    // 2. Each individual card must be affordable (cost <= mana_limit)
+    // This matches the engine's incremental logic where you can never hold more than the limit.
+    for &hi_u32 in &action.played_from_hand {
+        let bag_idx = hand_indices[hi_u32 as usize];
+        let cost = state.bag[bag_idx].economy.play_cost;
+        if cost > state.mana_limit {
+            return Err(GameError::NotEnoughMana {
+                have: state.mana_limit,
+                need: cost,
+            });
+        }
     }
 
     // 4. Board check: every unit in new_board must come from either:
