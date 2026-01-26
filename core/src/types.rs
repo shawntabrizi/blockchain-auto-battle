@@ -149,6 +149,7 @@ pub enum AbilityTarget {
     BackAlly,
     BackEnemy,
     AllyAhead,
+    AllyBehind,
     LowestHealthEnemy,
     HighestAttackEnemy,
     HighestHealthEnemy,

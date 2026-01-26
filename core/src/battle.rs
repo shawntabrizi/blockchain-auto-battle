@@ -500,6 +500,7 @@ fn resolve_trigger_queue<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger.trigger_target_id,
+                trigger.spawn_index_override,
             ) {
                 continue; // Condition not met, skip this trigger
             }
@@ -742,6 +743,7 @@ fn apply_ability_effect<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                spawn_index_override,
             );
             for target_id in targets {
                 if let Some(unit) = find_unit_mut(target_id, player_units, enemy_units) {
@@ -773,6 +775,7 @@ fn apply_ability_effect<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                spawn_index_override,
             );
             for target_id in targets {
                 if let Some(unit) = find_unit_mut(target_id, player_units, enemy_units) {
@@ -973,6 +976,7 @@ fn apply_ability_effect<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                spawn_index_override,
             );
             for target_id in targets {
                 if let Some(unit) = find_unit_mut(target_id, player_units, enemy_units) {
@@ -1403,6 +1407,7 @@ fn get_targets<R: BattleRng>(
     enemy_units: &[CombatUnit],
     rng: &mut R,
     trigger_target_id: Option<UnitInstanceId>,
+    source_position_override: Option<usize>,
 ) -> Vec<UnitInstanceId> {
     let (allies, enemies) = match source_team {
         Team::Player => (player_units, enemy_units),
@@ -1459,14 +1464,47 @@ fn get_targets<R: BattleRng>(
             }
         }
         AbilityTarget::AllyAhead => {
-            if let Some(pos) = allies
+            let pos = allies
                 .iter()
                 .position(|u| u.instance_id == source_instance_id)
-            {
-                if pos > 0 {
-                    vec![allies[pos - 1].instance_id]
+                .or(source_position_override);
+            if let Some(pos) = pos {
+                if pos > 0 && pos <= allies.len() {
+                    // When using override, the unit was removed so positions shifted down
+                    let idx = if allies.iter().any(|u| u.instance_id == source_instance_id) {
+                        pos - 1
+                    } else {
+                        // Dead unit was removed, so the unit that was at pos-1 is still at pos-1
+                        if pos > 0 && pos - 1 < allies.len() { pos - 1 } else { return vec![] }
+                    };
+                    vec![allies[idx].instance_id]
                 } else {
                     vec![]
+                }
+            } else {
+                vec![]
+            }
+        }
+        AbilityTarget::AllyBehind => {
+            let pos = allies
+                .iter()
+                .position(|u| u.instance_id == source_instance_id)
+                .or(source_position_override);
+            if let Some(pos) = pos {
+                if allies.iter().any(|u| u.instance_id == source_instance_id) {
+                    // Unit is alive, behind is pos + 1
+                    if pos + 1 < allies.len() {
+                        vec![allies[pos + 1].instance_id]
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    // Unit is dead and removed, so what was at pos+1 is now at pos
+                    if pos < allies.len() {
+                        vec![allies[pos].instance_id]
+                    } else {
+                        vec![]
+                    }
                 }
             } else {
                 vec![]
@@ -1576,6 +1614,7 @@ fn evaluate_condition<R: BattleRng>(
     enemy_units: &[CombatUnit],
     rng: &mut R,
     trigger_target_id: Option<UnitInstanceId>,
+    source_position_override: Option<usize>,
 ) -> bool {
     match condition {
         AbilityCondition::None => true,
@@ -1590,6 +1629,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             if target_ids.is_empty() {
                 return false;
@@ -1609,6 +1649,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             if target_ids.is_empty() {
                 return false;
@@ -1628,6 +1669,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             if target_ids.is_empty() {
                 return false;
@@ -1647,6 +1689,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             if target_ids.is_empty() {
                 return false;
@@ -1682,6 +1725,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             target_ids
                 .first()
@@ -1700,6 +1744,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             target_ids
                 .first()
@@ -1718,6 +1763,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             target_ids
                 .first()
@@ -1736,6 +1782,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             );
             target_ids
                 .first()
@@ -1762,6 +1809,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             ) && evaluate_condition(
                 right,
                 ctx,
@@ -1770,6 +1818,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             )
         }
         AbilityCondition::Or { left, right } => {
@@ -1781,6 +1830,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             ) || evaluate_condition(
                 right,
                 ctx,
@@ -1789,6 +1839,7 @@ fn evaluate_condition<R: BattleRng>(
                 enemy_units,
                 rng,
                 trigger_target_id,
+                source_position_override,
             )
         }
         AbilityCondition::Not { inner } => !evaluate_condition(
@@ -1799,6 +1850,7 @@ fn evaluate_condition<R: BattleRng>(
             enemy_units,
             rng,
             trigger_target_id,
+            source_position_override,
         ),
     }
 }

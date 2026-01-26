@@ -163,6 +163,27 @@ pub fn get_starter_templates() -> Vec<CardTemplate> {
             is_token: false,
         },
         CardTemplate {
+            template_id: "martyr_knight",
+            name: "Martyr Knight",
+            attack: 2,
+            health: 3,
+            play_cost: 3,
+            pitch_value: 2,
+            abilities: vec![Ability {
+                trigger: AbilityTrigger::OnFaint,
+                effect: AbilityEffect::ModifyStats {
+                    health: 2,
+                    attack: 2,
+                    target: AbilityTarget::AllyBehind,
+                },
+                name: String::from("Last Stand"),
+                description: String::from("Give the ally behind +2/+2 on death"),
+                condition: AbilityCondition::None,
+                max_triggers: Some(1),
+            }],
+            is_token: false,
+        },
+        CardTemplate {
             template_id: "archer",
             name: "Archer",
             attack: 1,
