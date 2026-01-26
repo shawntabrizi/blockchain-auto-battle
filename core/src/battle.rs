@@ -1420,6 +1420,11 @@ fn get_targets<R: BattleRng>(
         AbilityTarget::TriggerTarget => trigger_target_id.map(|id| vec![id]).unwrap_or_default(),
         AbilityTarget::AllAllies => allies.iter().map(|u| u.instance_id).collect(),
         AbilityTarget::AllEnemies => enemies.iter().map(|u| u.instance_id).collect(),
+        AbilityTarget::AllUnits => player_units
+            .iter()
+            .chain(enemy_units.iter())
+            .map(|u| u.instance_id)
+            .collect(),
         AbilityTarget::RandomAlly => {
             if allies.is_empty() {
                 vec![]

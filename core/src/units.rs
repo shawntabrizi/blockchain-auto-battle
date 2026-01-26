@@ -183,6 +183,26 @@ pub fn get_starter_templates() -> Vec<CardTemplate> {
             is_token: false,
         },
         CardTemplate {
+            template_id: "abyssal_bomber",
+            name: "Abyssal Bomber",
+            attack: 2,
+            health: 2,
+            play_cost: 4,
+            pitch_value: 2,
+            abilities: vec![Ability {
+                trigger: AbilityTrigger::OnFaint,
+                effect: AbilityEffect::Damage {
+                    amount: 3,
+                    target: AbilityTarget::AllUnits,
+                },
+                name: String::from("Abyssal Blast"),
+                description: String::from("Deal 3 damage to ALL units on death"),
+                condition: AbilityCondition::None,
+                max_triggers: None,
+            }],
+            is_token: false,
+        },
+        CardTemplate {
             template_id: "archer",
             name: "Archer",
             attack: 1,

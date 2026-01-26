@@ -22,7 +22,7 @@ const EMOJI_MAP: Record<string, string> = {
   headhunter: '🕵️',
   giant_slayer: '🗡️',
   warder: '💂',
-  martyr_knight: '🤺',
+  martyr_knight: '🕯️',
 
   // Orcs
   orc_warrior: '⚔️',
@@ -40,6 +40,7 @@ const EMOJI_MAP: Record<string, string> = {
   golem: '🗿',
 
   // Beasts / Monsters
+  abyssal_bomber: '💣',
   wolf_rider: '🐺',
   troll_brute: '🧌',
   troll_warrior: '🪓',
