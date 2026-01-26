@@ -17,9 +17,6 @@ interface MultiplayerState {
   status: ConnectionStatus;
   logs: LogEntry[];
   
-  // UI State
-  showMenu: boolean;
-  
   // Game Sync State
   opponentBoard: any | null;
   isReady: boolean;
@@ -40,7 +37,6 @@ interface MultiplayerState {
   setIsReady: (ready: boolean) => void;
   setGameSeed: (seed: number) => void;
   setStatus: (status: ConnectionStatus) => void;
-  setShowMenu: (show: boolean) => void;
 }
 
 export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
@@ -51,8 +47,6 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   isHost: false,
   status: 'disconnected',
   logs: [],
-  
-  showMenu: false,
   
   opponentBoard: null,
   isReady: false,
@@ -150,7 +144,6 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   setIsReady: (ready: boolean) => set({ isReady: ready }),
   setGameSeed: (seed: number) => set({ gameSeed: seed }),
   setStatus: (status: ConnectionStatus) => set({ status }),
-  setShowMenu: (showMenu: boolean) => set({ showMenu }),
 
   reset: () => {
       const { peer } = get();
@@ -163,7 +156,6 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
           isHost: false,
           status: 'disconnected',
           logs: [],
-          showMenu: false,
           opponentBoard: null,
           isReady: false,
           opponentReady: false,
