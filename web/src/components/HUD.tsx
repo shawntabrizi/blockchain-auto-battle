@@ -1,9 +1,23 @@
 import { useGameStore } from '../store/gameStore';
+import { useMultiplayerStore } from '../store/multiplayerStore';
 
 export function HUD() {
-  const { view, endTurn } = useGameStore();
+  const { view, endTurn, engine } = useGameStore();
+  const { status, setIsReady, sendMessage, isReady, opponentReady } = useMultiplayerStore();
 
   if (!view) return null;
+
+  const handleEndTurn = () => {
+    if (status === 'in-game') {
+        const board = engine?.get_board();
+        setIsReady(true);
+        sendMessage({ type: 'END_TURN_READY', board });
+    } else {
+        endTurn();
+    }
+  };
+
+  const isWaiting = status === 'in-game' && isReady && !opponentReady;
 
   return (
     <div className="h-16 bg-gray-900/80 border-b border-gray-700 flex items-center justify-between px-6">
@@ -30,8 +44,12 @@ export function HUD() {
         </div>
 
         {view.phase === 'shop' && (
-          <button onClick={endTurn} className="btn btn-primary text-lg px-6 py-3">
-            Battle!
+          <button 
+            onClick={handleEndTurn} 
+            disabled={isWaiting}
+            className={`btn btn-primary text-lg px-6 py-3 transition-all ${isWaiting ? 'bg-gray-600 scale-95 opacity-80 cursor-not-allowed' : ''}`}
+          >
+            {isWaiting ? 'Waiting...' : 'Battle!'}
           </button>
         )}
       </div>

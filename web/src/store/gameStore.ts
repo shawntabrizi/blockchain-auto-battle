@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameView, BattleOutput, Selection } from '../types';
+import type { GameView, BattleOutput, Selection, BattleResult, CombatEvent } from '../types';
 import type { GameEngine } from '../wasm/manalimit_core';
 
 type GameEngineInstance = GameEngine;
@@ -34,6 +34,10 @@ interface GameStore {
   setSelection: (selection: Selection | null) => void;
   closeBattleOverlay: () => void;
   toggleShowRawJson: () => void;
+
+  // Multiplayer Actions
+  startMultiplayerGame: (seed: number) => void;
+  resolveMultiplayerBattle: (opponentBoard: any, seed: number) => void;
 }
 
 // Module-level state to prevent double initialization
@@ -176,6 +180,49 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
     } catch (err) {
       console.error('Failed to start new run:', err);
+    }
+  },
+
+  // Multiplayer Actions
+  startMultiplayerGame: (seed: number) => {
+    const { engine } = get();
+    if (!engine) return;
+    try {
+      // For now, we reuse new_run. In future, engine.new_run(seed)
+      engine.new_run();
+      set({
+        view: engine.get_view(),
+        battleOutput: null,
+        selection: null,
+        showBattleOverlay: false,
+      });
+    } catch (err) {
+      console.error('Failed to start multiplayer game:', err);
+    }
+  },
+
+  resolveMultiplayerBattle: (opponentBoard: any, seed: number) => {
+    const { engine } = get();
+    if (!engine) return;
+    try {
+      const myBoard = engine.get_board();
+      const battleOutput = engine.resolve_battle_p2p(myBoard, opponentBoard, BigInt(seed));
+      
+      // Update local state based on result
+      const events = (battleOutput as BattleOutput).events;
+      const lastEvent = events[events.length - 1];
+      if (lastEvent && lastEvent.type === 'battleEnd') {
+          engine.apply_battle_result(lastEvent.payload.result);
+      }
+
+      set({
+        view: engine.get_view(),
+        battleOutput: battleOutput as BattleOutput,
+        selection: null,
+        showBattleOverlay: true,
+      });
+    } catch (err) {
+      console.error('Failed to resolve multiplayer battle:', err);
     }
   },
 
