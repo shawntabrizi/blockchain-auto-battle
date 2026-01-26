@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
+import { useMultiplayerStore } from '../store/multiplayerStore';
 import type { CardView } from '../types';
 
 interface CardDetailPanelProps {
@@ -15,6 +16,7 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
   const [activeTab, setActiveTab] = React.useState<TabType>('card');
   const navigate = useNavigate();
   const { view, selection, buyCard, toggleFreeze, pitchShopCard, pitchBoardUnit, setSelection, showRawJson, toggleShowRawJson } = useGameStore();
+  const setShowMultiplayer = useMultiplayerStore((state) => state.setShowMenu);
 
   if (!isVisible) return null;
 
@@ -336,6 +338,19 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
               <strong>When Dies:</strong> Triggers when unit is defeated
             </li>
           </ul>
+        </div>
+
+        <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+          <h3 className="text-md font-bold text-yellow-400 mb-2">🤝 Multiplayer</h3>
+          <p className="text-sm text-white mb-3">
+            Connect with a friend using P2P WebRTC to play a head-to-head match!
+          </p>
+          <button
+            onClick={() => setShowMultiplayer(true)}
+            className="w-full btn bg-blue-600 hover:bg-blue-500 text-white text-sm"
+          >
+            Multiplayer Mode
+          </button>
         </div>
 
         <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
