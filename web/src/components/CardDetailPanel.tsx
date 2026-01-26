@@ -47,6 +47,10 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
           return 'When Ally Dies';
         case 'onDamageTaken':
           return 'When Hurt';
+        case 'onSpawn':
+          return 'On Spawn';
+        case 'onAllySpawn':
+          return 'Ally Spawned';
         case 'beforeUnitAttack':
           return 'Before Attacking';
         case 'afterUnitAttack':
@@ -78,6 +82,10 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
           return `Spawn a ${effect.templateId ? effect.templateId.replace('_', ' ') : 'unit'}`;
         case 'destroy':
           return `Destroy ${getTargetDescription(effect.target)}`;
+        case 'modifyStats':
+          const h = effect.health || 0;
+          const a = effect.attack || 0;
+          return `Give ${a >= 0 ? '+' : ''}${a}/${h >= 0 ? '+' : ''}${h} to ${getTargetDescription(effect.target)}`;
         default:
           return JSON.stringify(effect);
       }
@@ -89,6 +97,8 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
       switch (target) {
         case 'selfUnit':
           return 'this unit';
+        case 'triggerTarget':
+          return 'triggered unit';
         case 'allAllies':
           return 'all allies';
         case 'allEnemies':
@@ -165,32 +175,7 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
           </div>
         </div>
 
-        {/* Ability Section */}
-        {card.abilities.length > 0 && (
-          <div className="mb-6">
-            {card.abilities.map((ability, index) => (
-              <div key={index} className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                <h3 className="text-md font-bold text-yellow-400 mb-2">
-                  Ability: {ability.name}
-                </h3>
-                <div className="text-xs text-gray-300 mb-2">
-                  <strong>Trigger:</strong> {getTriggerDescription(ability.trigger)}
-                </div>
-                {ability.maxTriggers && (
-                  <div className="text-xs text-orange-400 mb-2">
-                    <strong>Max Triggers:</strong> {ability.maxTriggers}
-                  </div>
-                )}
-                <div className="text-sm text-white">{ability.description}</div>
-                <div className="text-xs text-gray-400 mt-2 italic">
-                  {getEffectDescription(ability.effect)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Action Buttons - Only show in main game, not sandbox */}
+        {/* Action Buttons - Moved above abilities */}
         {!isSandbox && (
           <div className="mb-6 space-y-2">
             {isBoardUnit ? (
@@ -204,7 +189,7 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
                 }}
                 className="w-full btn btn-danger text-sm"
               >
-                Pitch Board Unit
+                Pitch Board Unit (+{card.pitchValue} mana)
               </button>
             ) : (
               // Shop card actions
@@ -244,6 +229,31 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* Ability Section */}
+        {card.abilities.length > 0 && (
+          <div className="mb-6">
+            {card.abilities.map((ability, index) => (
+              <div key={index} className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h3 className="text-md font-bold text-yellow-400 mb-2">
+                  Ability: {ability.name}
+                </h3>
+                <div className="text-xs text-gray-300 mb-2">
+                  <strong>Trigger:</strong> {getTriggerDescription(ability.trigger)}
+                </div>
+                {ability.maxTriggers && (
+                  <div className="text-xs text-orange-400 mb-2">
+                    <strong>Max Triggers:</strong> {ability.maxTriggers}
+                  </div>
+                )}
+                <div className="text-sm text-white">{ability.description}</div>
+                <div className="text-xs text-gray-400 mt-2 italic">
+                  {getEffectDescription(ability.effect)}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
