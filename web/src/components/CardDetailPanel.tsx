@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
-import { useMultiplayerStore } from '../store/multiplayerStore';
 import type { CardView } from '../types';
 import { getCardEmoji } from '../utils/emoji';
 
@@ -17,7 +16,6 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
   const [activeTab, setActiveTab] = React.useState<TabType>('card');
   const navigate = useNavigate();
   const { view, selection, buyCard, toggleFreeze, pitchShopCard, pitchBoardUnit, setSelection, showRawJson, toggleShowRawJson } = useGameStore();
-  const setShowMultiplayer = useMultiplayerStore((state) => state.setShowMenu);
 
   if (!isVisible) return null;
 
@@ -319,7 +317,7 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
             Connect with a friend using P2P WebRTC to play a head-to-head match!
           </p>
           <button
-            onClick={() => setShowMultiplayer(true)}
+            onClick={() => navigate('/multiplayer')}
             className="w-full btn bg-blue-600 hover:bg-blue-500 text-white text-sm"
           >
             Multiplayer Mode

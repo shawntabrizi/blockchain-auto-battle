@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSandboxStore } from '../store/sandboxStore';
 import { UnitCard, EmptySlot } from './UnitCard';
 import { BattleArena } from './BattleArena';
@@ -82,9 +83,9 @@ function SandboxHeader() {
   return (
     <div className="flex-shrink-0 bg-gray-900 border-b border-gray-700 px-3 py-2 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <a href="/" className="text-gray-400 hover:text-white transition-colors text-sm">
-          &larr; Back
-        </a>
+        <Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1">
+          <span>&larr;</span> Back
+        </Link>
         <h1 className="text-lg font-bold text-gold">Sandbox</h1>
       </div>
 

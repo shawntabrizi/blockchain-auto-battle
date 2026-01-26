@@ -1,14 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { GameLayout } from './components/GameLayout';
 import { useGameStore } from './store/gameStore';
-import { MultiplayerMenu } from './components/MultiplayerMenu';
 import { MultiplayerManager } from './components/MultiplayerManager';
-import { useMultiplayerStore } from './store/multiplayerStore';
 
 function App() {
   const init = useGameStore((state) => state.init);
   const initCalled = useRef(false);
-  const showMultiplayer = useMultiplayerStore((state) => state.showMenu);
 
   useEffect(() => {
     // Prevent double initialization in StrictMode
@@ -23,8 +20,6 @@ function App() {
 
   return (
     <>
-      {showMultiplayer && <MultiplayerMenu />}
-      
       <MultiplayerManager />
       <GameLayout />
     </>
