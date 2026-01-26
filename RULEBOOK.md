@@ -1,21 +1,20 @@
-# MANALIMIT: Official Game Rules (v1.0)
+# MANALIMIT: Official Game Rules (v1.1)
 
 ## 1. Introduction
 
-**Manalimit** is a strategy auto-battler where your deck is your lifeblood. There is no automatic mana regeneration. To summon a powerful army, you must be willing to destroy your own resources.
+**Manalimit** is a strategy auto-battler where your Bag is your lifeblood. There is no automatic mana regeneration. To summon a powerful army, you must be willing to destroy your own resources.
 
 **Objective:** Win **10 Rounds** to claim victory.
 **Failure:** If you lose **3 Lives**, your run ends.
 
 ---
 
-## 2. Setup (The Deck)
+## 2. Setup (The Bag)
 
-Before starting a run, you must construct a deck of **60 Unit Cards**.
+Before starting a run, your **Bag** is populated with a starting set of cards.
 
-* **Limit:** Maximum **3 copies** of any unique card.
-* **No Sideboard:** All tools you need must be in your main deck.
-* **Resource Pool:** Your deck is finite. It serves as both your shop inventory and your mana source.
+* **Unordered Pool:** Your Bag is a chaotic collection of resources. Unlike a traditional deck, it has no specific order.
+* **Resource Pool:** Your Bag is finite. It serves as both your potential recruits and your mana source.
 
 ---
 
@@ -30,7 +29,7 @@ Every Unit Card has four key stats. Two are for economy, two are for combat.
 
 ### Combat Stats
 
-* **Attack (Sword):** Damage dealt to enemies. Also determines **Initiative** (who reacts first).
+* **Attack (Sword):** Damage dealt to enemies. Also determines **Priority** (who reacts first).
 * **Health (Heart):** Damage sustained before the unit is defeated.
 
 ---
@@ -41,18 +40,19 @@ You start every turn with **0 Mana**. You must generate it manually.
 
 ### Generating Mana (The Pitch)
 
-To gain Mana, you must **Pitch** a card from your Shop or Board into the **Ash Pile**.
+To gain Mana, you must **Pitch** a card from your Hand or Board into the **Ash Pile**.
 
 * **Effect:** The card is removed from the game permanently.
 * **Gain:** You gain Mana equal to the card's **Pitch Value**.
 
 ### The Manalimit (Capacity)
 
-You cannot hoard infinite Mana. Your **Manalimit** determines the maximum Mana you can hold at any one moment. Any Mana generated beyond this limit is evaporated (lost).
+You cannot hoard infinite Mana. Your **Manalimit** determines the maximum Mana you can hold at any one moment. 
 
-* **Round 1:** Limit = 3 Mana
-* **Round 2:** Limit = 4 Mana
-* **Round 3+:** Limit increases by +1 per Round (Max 10).
+* **Round 1:** Limit = 3 Mana.
+* **Round 2+:** Limit increases by +1 per Round (Max 10).
+* **Hard Limit:** Any Mana generated beyond this limit is evaporated (lost).
+* **Refilling:** You can pitch, spend, and pitch again in a single turn.
 
 > *Strategy Tip: Pitching a high-value card when your tank is full is a waste. Spend your Mana before generating more.*
 
@@ -60,64 +60,59 @@ You cannot hoard infinite Mana. Your **Manalimit** determines the maximum Mana y
 
 ## 5. The Game Loop
 
-The game is played in a series of rounds. Each round has a **Shop Phase** and a **Battle Phase**.
+The game is played in a series of rounds. Each round has a **Planning Phase** and a **Battle Phase**.
 
-### Phase A: The Shop (Conveyor Belt)
+### Phase A: The Planning Phase (Your Hand)
 
-You view the top **7 Cards** of your deck.
+Every round, you derive a fresh **Hand of 7 cards** from your Bag. 
+
+* **Deterministic:** The cards in your hand are chosen randomly but deterministically based on your game seed and the current round.
+* **Persistence:** Unused hand cards return to your Bag at the end of the phase.
 
 **Available Actions:**
 
-1. **PITCH:** Drag a card to the Ash Pile to generate Mana. The belt immediately slides a new card in to replace it.
-2. **BUY:** Spend Mana to move a unit from the belt to your **Bench**. This leaves an empty slot on the belt (it does *not* refill immediately).
-3. **FREEZE:** Lock a card. It will remain in the shop for the next round.
-4. **END TURN:**
-* Any unspent Mana is lost.
-* All unfrozen cards cycle to the bottom of your deck.
-* Combat begins.
-
-
-
-> **Warning - Starvation:** Every time you Pitch a card to cycle the shop, you reduce your deck size. If your deck reaches 0 cards, the shop stops refilling.
+1. **PITCH:** Drag a card from Hand or Board to the Ash Pile to generate Mana.
+2. **PLAY:** Drag a card from Hand to an empty slot on your Board. This costs Mana.
+3. **MOVE:** Drag a unit on your board to another slot to swap their positions.
+4. **BATTLE:** Submit your board to start the combat.
 
 ### Phase B: The Battle (Automated)
 
-Combat resolves automatically against a "Ghost" of a real opponent with a similar Round Number and Win Record.
+Combat resolves automatically against a "Ghost" of a real opponent.
 
-**1. Triggers & Initiative (The "Speed" Check)**
-Before attacks happen, abilities like *"Start of Battle"* or *"On Faint"* may trigger.
+**1. The Priority System (Who goes first?)**
+When multiple units share a trigger (e.g., "Battle Start" or "Before Any Attack"), the game uses a **Priority Queue** to decide the resolution order:
 
-* **Rule:** If multiple units trigger at the same time, the resolution order is determined by a strict hierarchy:
-    1. **Highest Attack:** The unit with more Attack power goes first.
-    2. **Highest Health:** If Attack is tied, the unit with more current Health goes first.
-    3. **Player Priority:** If stats are tied, the Player's unit triggers before the Enemy's unit.
-    4. **Position:** If on the same team, the unit closer to the front (Index 0) triggers first.
-    5. **Ability Order:** If a unit has multiple triggers, they resolve in the order they appear on the card.
-* *Example: A Sniper (6 Atk, 2 HP) and a Brute (6 Atk, 8 HP) both have "Start of Battle" triggers. The Brute triggers first because it has higher Health.*
+1.  **Highest Attack:** The unit with the most Attack power goes first.
+2.  **Highest Health:** If Attack is tied, the unit with the most current Health goes first.
+3.  **Player Priority:** If stats are tied, the Player's unit triggers before the Enemy's unit.
+4.  **Front-Most:** If on the same team, the unit closer to the front (Index 0) triggers first.
+5.  **Ability Order:** If a unit has multiple triggers, they resolve in the order they appear on the card.
 
+**2. Recursive State Logic**
+The game state is **Live**. If an ability kills a unit or spawns a new one, that unit's "On Death" or "On Spawn" triggers happen **immediately**, potentially interrupting the existing priority queue.
 
-
-**2. The Clash (Simultaneous Damage)**
+**3. The Clash (Simultaneous Damage)**
 
 * Units attack from **Front to Back**.
 * The front-most units of both teams strike each other **simultaneously**.
 * If a unit dies, the next unit behind it steps forward.
 
-**3. Outcome**
+**4. Outcome**
 
-* **Victory (+1 Trophy):** You have at least 1 unit alive.
+* **Victory (+1 Star):** You have at least 1 unit alive.
 * **Defeat (-1 Life):** Your team is wiped out.
-* **Draw (No Change):** Both teams die simultaneously. You do not gain a Trophy, and you do not lose a Life.
+* **Draw (No Change):** Both teams die simultaneously. You do not gain a Star, and you do not lose a Life.
 
 ---
 
 ## 6. Progression Strategy
 
-There is no "Leveling Up" or merging units. Instead, you scale by **Liquidation**.
+Scale your army by efficient **Liquidation**.
 
-* **Early Game:** Your Manalimit is low (3). You fill your board with cheap, efficient units (Cost 2).
-* **Mid Game:** Your Manalimit is high (8). Your board is full of weak units.
-* **The Pivot:** You **Pitch** your own weak units from the board to generate Mana. You combine this with Mana from the shop to buy a massive **Carry Unit** (Cost 8) that was previously unaffordable.
+* **Early Game:** Your Manalimit is low. Focus on cheap units that provide early board presence.
+* **Mid Game:** As your Manalimit grows, look for synergies.
+* **The Pivot:** You can **Pitch** units from your board to generate the large amounts of Mana required to play massive **Legendary Units** (Cost 8-10).
 
 ---
 
@@ -125,9 +120,10 @@ There is no "Leveling Up" or merging units. Instead, you scale by **Liquidation*
 
 | Term | Definition |
 | --- | --- |
-| **Ash Pile** | The graveyard. Pitched cards go here and are removed from the run. |
-| **Pitch** | Sacrificing a card to generate Mana. |
-| **Manalimit** | Your Mana Capacity. You cannot hold more Mana than this number. |
-| **Starvation** | Running out of cards in your deck. The shop stops refilling. |
-| **Initiative** | The order in which abilities resolve. Determined by Attack Power. |
-| **Ghost** | A snapshot of a player's board from a previous run. |
+| **Bag** | Your unordered resource pool of unit cards. |
+| **Hand** | The 7 cards selected for you to play with this round. |
+| **Ash Pile** | The graveyard. Pitched cards are removed from the run permanently. |
+| **Pitch** | Sacrificing a card or board unit to generate Mana. |
+| **Manalimit** | Your maximum Mana capacity. |
+| **Priority** | The strict hierarchy used to resolve simultaneous triggers. |
+| **Ghost** | A snapshot of a real player's board from a previous run. |
