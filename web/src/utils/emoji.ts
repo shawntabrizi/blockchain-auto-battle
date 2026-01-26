@@ -54,6 +54,7 @@ const EMOJI_MAP: Record<string, string> = {
   rat_swarm: '🐀',
   rat_token: '🐀',
   scaredy_cat: '🙀',
+  spined_urchin: '🦔',
   skeleton_archer: '💀',
   vampire: '🧛',
   fire_elemental: '🔥',

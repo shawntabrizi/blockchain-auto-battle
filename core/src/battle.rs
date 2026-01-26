@@ -582,7 +582,7 @@ fn resolve_trigger_queue<R: BattleRng>(
                             },
                             is_from_dead: is_fatal, // ALLOW execution if it died from this damage
                             spawn_index_override: if is_fatal { Some(idx_in_team) } else { None },
-                            trigger_target_id: Some(unit_id),
+                            trigger_target_id: Some(trigger.source_id),
                             condition: ability.condition.clone(),
                             ability_index: sub_idx,
                             max_triggers: ability.max_triggers,
@@ -1225,6 +1225,7 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
 
     // Check for OnDamageTaken for the clashing units
     let mut check_clash_damage = |id: Option<UnitInstanceId>,
+                                  dealer_id: Option<UnitInstanceId>,
                                   team: Team,
                                   units: &[CombatUnit],
                                   dead: &[(usize, CombatUnit)]| {
@@ -1268,7 +1269,7 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
                             },
                             is_from_dead: is_dead,
                             spawn_index_override: if is_dead { Some(current_idx) } else { None },
-                            trigger_target_id: Some(target_id),
+                            trigger_target_id: dealer_id,
                             condition: a.condition.clone(),
                             ability_index: sub_idx,
                             max_triggers: a.max_triggers,
@@ -1279,8 +1280,8 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
         }
     };
 
-    check_clash_damage(clashing_p_id, Team::Player, player_units, &dead_player);
-    check_clash_damage(clashing_e_id, Team::Enemy, enemy_units, &dead_enemy);
+    check_clash_damage(clashing_p_id, clashing_e_id, Team::Player, player_units, &dead_player);
+    check_clash_damage(clashing_e_id, clashing_p_id, Team::Enemy, enemy_units, &dead_enemy);
 
     if dead_player.is_empty() && dead_enemy.is_empty() && queue.is_empty() {
         return Ok(());

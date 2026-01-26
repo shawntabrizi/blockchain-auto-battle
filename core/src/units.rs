@@ -340,6 +340,26 @@ pub fn get_starter_templates() -> Vec<CardTemplate> {
             is_token: false,
         },
         CardTemplate {
+            template_id: "spined_urchin",
+            name: "Spined Urchin",
+            attack: 1,
+            health: 4,
+            play_cost: 2,
+            pitch_value: 2,
+            abilities: vec![Ability {
+                trigger: AbilityTrigger::OnDamageTaken,
+                effect: AbilityEffect::Damage {
+                    amount: 1,
+                    target: AbilityTarget::TriggerTarget,
+                },
+                name: String::from("Spines"),
+                description: String::from("Deal 1 damage to the attacker when hurt"),
+                condition: AbilityCondition::None,
+                max_triggers: None,
+            }],
+            is_token: false,
+        },
+        CardTemplate {
             template_id: "vampire",
             name: "Vampire",
             attack: 3,
