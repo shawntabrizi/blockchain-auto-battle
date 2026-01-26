@@ -33,13 +33,8 @@ export function Arena() {
     } else if (data.startsWith('shop-')) {
       // Shop card dropped on board position - buy
       const shopIndex = parseInt(data.split('-')[1]);
-      // First check if we can buy this card
-      if (view && view.canAfford[shopIndex]) {
-        buyCard(shopIndex);
-        // The card will be placed in the first available board slot
-        // But we want it to go to the specific dropIndex
-        // This might need backend changes to support placing in specific slots
-      }
+      // Always try to buy - store handles the error toast if mana is insufficient
+      buyCard(shopIndex);
     }
 
     setDraggedIndex(null);
