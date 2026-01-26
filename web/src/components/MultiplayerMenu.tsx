@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { useMultiplayerStore } from '../store/multiplayerStore';
 
-interface MultiplayerMenuProps {
-  onClose: () => void;
-}
-
-export function MultiplayerMenu({ onClose }: MultiplayerMenuProps) {
+export function MultiplayerMenu() {
   const { 
     peer, 
     initializePeer, 
@@ -13,7 +9,8 @@ export function MultiplayerMenu({ onClose }: MultiplayerMenuProps) {
     opponentPeerId, 
     status, 
     connectToPeer, 
-    logs 
+    logs,
+    setShowMenu
   } = useMultiplayerStore();
   
   const [targetId, setTargetId] = useState('');
@@ -43,7 +40,7 @@ export function MultiplayerMenu({ onClose }: MultiplayerMenuProps) {
                  <h2 className="text-2xl font-bold text-green-400 mb-4">Connected!</h2>
                  <p className="mb-6">Playing against: <span className="font-mono text-yellow-300">{opponentPeerId}</span></p>
                  <button 
-                    onClick={onClose}
+                    onClick={() => setShowMenu(false)}
                     className="bg-blue-600 px-6 py-2 rounded hover:bg-blue-500"
                  >
                      Go to Game
@@ -57,7 +54,7 @@ export function MultiplayerMenu({ onClose }: MultiplayerMenuProps) {
     <div className="fixed top-0 left-0 w-full h-full bg-black/90 flex items-center justify-center z-50">
       <div className="bg-gray-800 p-8 rounded-lg max-w-md w-full text-white relative">
         <button 
-            onClick={onClose}
+            onClick={() => setShowMenu(false)}
             className="absolute top-4 right-4 text-gray-400 hover:text-white"
         >
             ✕
