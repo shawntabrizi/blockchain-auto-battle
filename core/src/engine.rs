@@ -4,6 +4,7 @@
 
 use alloc::format;
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::battle::{resolve_battle, CombatEvent, UnitId, UnitView};
@@ -11,7 +12,7 @@ use crate::log;
 use crate::opponents::get_opponent_for_round;
 use crate::rng::{BattleRng, XorShiftRng};
 use crate::state::*;
-use crate::types::{BoardUnit, ShopSlot, UnitCard};
+use crate::types::{BoardUnit, UnitCard};
 use crate::units::get_starter_templates;
 use crate::view::GameView;
 use serde::{Deserialize, Serialize};
@@ -31,6 +32,13 @@ pub struct BattleOutput {
 pub struct GameEngine {
     state: GameState,
     last_battle_output: Option<BattleOutput>,
+    // Per-turn local tracking (transient, not persisted)
+    current_mana: i32,
+    hand_indices: Vec<usize>,
+    hand_used: Vec<bool>,   // true = pitched or played
+    hand_pitched: Vec<bool>, // true = pitched for mana
+    hand_played: Vec<bool>,  // true = played to board
+    board_pitched: Vec<usize>, // board slots that were pitched
 }
 
 #[wasm_bindgen]
@@ -40,11 +48,17 @@ impl GameEngine {
     pub fn new() -> Self {
         log::info("=== MANALIMIT ENGINE INITIALIZED ===");
         let mut engine = Self {
-            state: GameState::new(),
+            state: GameState::new(42),
             last_battle_output: None,
+            current_mana: 0,
+            hand_indices: Vec::new(),
+            hand_used: Vec::new(),
+            hand_pitched: Vec::new(),
+            hand_played: Vec::new(),
+            board_pitched: Vec::new(),
         };
-        engine.initialize_deck();
-        engine.fill_shop();
+        engine.initialize_bag();
+        engine.start_planning_phase();
         engine.log_state();
         engine
     }
@@ -53,7 +67,7 @@ impl GameEngine {
     #[wasm_bindgen]
     pub fn get_view(&self) -> JsValue {
         log::debug("get_view", "Serializing game state to view");
-        let view = GameView::from(&self.state);
+        let view = GameView::from_state(&self.state, self.current_mana, &self.hand_indices, &self.hand_used);
         match serde_wasm_bindgen::to_value(&view) {
             Ok(val) => val,
             Err(e) => {
@@ -73,107 +87,86 @@ impl GameEngine {
         }
     }
 
-    /// Pitch a card from the shop to generate mana
+    /// Pitch a card from the hand to generate mana
     #[wasm_bindgen]
-    pub fn pitch_shop_card(&mut self, index: usize) -> Result<(), String> {
-        log::action("pitch_shop_card", &format!("index={}", index));
+    pub fn pitch_hand_card(&mut self, hand_index: usize) -> Result<(), String> {
+        log::action("pitch_hand_card", &format!("hand_index={}", hand_index));
         if self.state.phase != GamePhase::Shop {
             return Err("Can only pitch during shop phase".to_string());
         }
 
-        let card = self
-            .state
-            .shop
-            .get_mut(index)
-            .ok_or("Invalid shop index")?
-            .card
-            .take()
-            .ok_or("Shop slot is empty")?;
-
-        let pitch_value = card.economy.pitch_value;
-
-        self.state.add_mana(pitch_value);
-
-        let new_card = self.state.deck.pop();
-
-        if let Some(slot) = self.state.shop.get_mut(index) {
-            if let Some(nc) = new_card {
-                log::info(&format!(
-                    "   Refilled slot {} with '{}' from deck ({} remaining)",
-                    index,
-                    nc.name,
-                    self.state.deck.len()
-                ));
-                *slot = ShopSlot::with_card(nc);
-            } else {
-                log::warn("Deck empty, slot left empty");
-            }
+        if hand_index >= self.hand_indices.len() {
+            return Err("Invalid hand index".to_string());
         }
+
+        if self.hand_used[hand_index] {
+            return Err("Card already used this turn".to_string());
+        }
+
+        let bag_idx = self.hand_indices[hand_index];
+        let pitch_value = self.state.bag[bag_idx].economy.pitch_value;
+
+        self.current_mana = (self.current_mana + pitch_value).min(self.state.mana_limit);
+        self.hand_used[hand_index] = true;
+        self.hand_pitched[hand_index] = true;
 
         self.log_state();
         Ok(())
     }
 
-    /// Buy a card from the shop
+    /// Play a card from the hand to a board slot
     #[wasm_bindgen]
-    pub fn buy_card(&mut self, shop_index: usize) -> Result<(), String> {
-        log::action("buy_card", &format!("shop_index={}", shop_index));
+    pub fn play_hand_card(&mut self, hand_index: usize, board_slot: usize) -> Result<(), String> {
+        log::action(
+            "play_hand_card",
+            &format!("hand_index={}, board_slot={}", hand_index, board_slot),
+        );
         if self.state.phase != GamePhase::Shop {
-            return Err("Can only buy during shop phase".to_string());
+            return Err("Can only play during shop phase".to_string());
         }
 
-        let cost = self
-            .state
-            .shop
-            .get(shop_index)
-            .and_then(|s| s.card.as_ref())
-            .map(|c| c.economy.play_cost)
-            .ok_or("Shop slot is empty")?;
+        if hand_index >= self.hand_indices.len() {
+            return Err("Invalid hand index".to_string());
+        }
 
-        if !self.state.can_afford(cost) {
+        if self.hand_used[hand_index] {
+            return Err("Card already used this turn".to_string());
+        }
+
+        if board_slot >= BOARD_SIZE {
+            return Err("Invalid board slot".to_string());
+        }
+
+        if self.state.board[board_slot].is_some() {
+            return Err("Board slot is occupied".to_string());
+        }
+
+        let bag_idx = self.hand_indices[hand_index];
+        let play_cost = self.state.bag[bag_idx].economy.play_cost;
+
+        if self.current_mana < play_cost {
             return Err(format!(
                 "Not enough mana: have {}, need {}",
-                self.state.mana, cost
+                self.current_mana, play_cost
             ));
         }
 
-        let board_slot = self.state.find_empty_board_slot().ok_or("Board is full")?;
+        self.current_mana -= play_cost;
+        self.hand_used[hand_index] = true;
+        self.hand_played[hand_index] = true;
 
-        let card = self
-            .state
-            .shop
-            .get_mut(shop_index)
-            .and_then(|s| s.card.take())
-            .ok_or("Failed to take card from shop")?;
-
-        self.state
-            .spend_mana(cost)
-            .map_err(|e| format!("{:?}", e))?;
+        // Place the card on the board
+        let card = self.state.bag[bag_idx].clone();
         self.state.board[board_slot] = Some(BoardUnit::from_card(card));
 
         self.log_state();
         Ok(())
     }
 
-    /// Freeze/unfreeze a shop slot
+    /// Buy a hand card and place it at a specific board slot (convenience for drag-and-drop)
     #[wasm_bindgen]
-    pub fn toggle_freeze(&mut self, shop_index: usize) -> Result<(), String> {
-        log::action("toggle_freeze", &format!("shop_index={}", shop_index));
-        if self.state.phase != GamePhase::Shop {
-            return Err("Can only freeze during shop phase".to_string());
-        }
-
-        let slot = self
-            .state
-            .shop
-            .get_mut(shop_index)
-            .ok_or("Invalid shop index")?;
-        if slot.card.is_some() {
-            slot.frozen = !slot.frozen;
-            Ok(())
-        } else {
-            Err("Cannot freeze empty slot".to_string())
-        }
+    pub fn buy_and_place(&mut self, hand_index: usize, board_slot: usize) -> Result<(), String> {
+        self.play_hand_card(hand_index, board_slot)
     }
 
     /// Swap two board positions
@@ -210,7 +203,10 @@ impl GameEngine {
             .and_then(|s| s.take())
             .ok_or("Board slot is empty")?;
 
-        self.state.add_mana(unit.card.economy.pitch_value);
+        let pitch_value = unit.card.economy.pitch_value;
+        self.current_mana = (self.current_mana + pitch_value).min(self.state.mana_limit);
+        self.board_pitched.push(board_slot);
+
         self.log_state();
         Ok(())
     }
@@ -223,16 +219,32 @@ impl GameEngine {
             return Err("Can only end turn during shop phase".to_string());
         }
 
-        for slot in &mut self.state.shop {
-            if !slot.frozen {
-                if let Some(card) = slot.card.take() {
-                    self.state.deck.insert(0, card);
-                }
+        // Remove played+pitched cards from bag directly.
+        // The engine has already applied board changes incrementally and validated each step.
+        let hand_indices = self.state.derive_hand_indices();
+        let mut bag_indices_to_remove: Vec<usize> = Vec::new();
+
+        for (hi, &pitched) in self.hand_pitched.iter().enumerate() {
+            if pitched {
+                bag_indices_to_remove.push(hand_indices[hi]);
             }
-            slot.frozen = false;
+        }
+        for (hi, &played) in self.hand_played.iter().enumerate() {
+            if played {
+                bag_indices_to_remove.push(hand_indices[hi]);
+            }
         }
 
-        self.state.mana = 0;
+        // Sort descending, dedup, and remove
+        bag_indices_to_remove.sort_unstable();
+        bag_indices_to_remove.dedup();
+        bag_indices_to_remove.reverse();
+
+        for idx in bag_indices_to_remove {
+            self.state.bag.swap_remove(idx);
+        }
+
+        self.current_mana = 0;
         self.state.phase = GamePhase::Battle;
         self.run_battle();
         self.log_state();
@@ -258,8 +270,8 @@ impl GameEngine {
 
         self.state.round += 1;
         self.state.mana_limit = self.state.calculate_mana_limit();
-        self.fill_shop();
         self.state.phase = GamePhase::Shop;
+        self.start_planning_phase();
 
         self.log_state();
         Ok(())
@@ -269,10 +281,10 @@ impl GameEngine {
     #[wasm_bindgen]
     pub fn new_run(&mut self) {
         log::action("new_run", "Starting fresh run");
-        self.state = GameState::new();
+        self.state = GameState::new(42);
         self.last_battle_output = None;
-        self.initialize_deck();
-        self.fill_shop();
+        self.initialize_bag();
+        self.start_planning_phase();
         self.log_state();
     }
 
@@ -294,6 +306,7 @@ impl GameEngine {
         let state: GameState = serde_wasm_bindgen::from_value(state_val)
             .map_err(|e| format!("Failed to parse state: {:?}", e))?;
         self.state = state;
+        self.start_planning_phase();
         Ok(())
     }
 
@@ -368,6 +381,7 @@ impl GameEngine {
 
         serde_wasm_bindgen::to_value(&output).map_err(|e| format!("Serialization failed: {:?}", e))
     }
+
     /// Apply a battle result to the game state (for P2P)
     #[wasm_bindgen]
     pub fn apply_battle_result(&mut self, result_val: JsValue) -> Result<(), String> {
@@ -395,8 +409,8 @@ impl GameEngine {
         log::debug("STATE", &format!("{:?}", self.state));
     }
 
-    fn initialize_deck(&mut self) {
-        self.state.deck.clear();
+    fn initialize_bag(&mut self) {
+        self.state.bag.clear();
         let templates = get_starter_templates();
         for template in &templates {
             if template.is_token {
@@ -415,22 +429,20 @@ impl GameEngine {
                     template.is_token,
                 )
                 .with_abilities(template.abilities.clone());
-                self.state.deck.push(card);
+                self.state.bag.push(card);
             }
         }
-        // Shuffle the deck using XorShiftRng
-        let mut rng = XorShiftRng::seed_from_u64(42);
-        rng.shuffle(&mut self.state.deck);
+        // No shuffle needed for bag -- hand is derived via RNG
     }
 
-    fn fill_shop(&mut self) {
-        for slot in &mut self.state.shop {
-            if slot.card.is_none() && !slot.frozen {
-                if let Some(card) = self.state.deck.pop() {
-                    *slot = ShopSlot::with_card(card);
-                }
-            }
-        }
+    fn start_planning_phase(&mut self) {
+        self.hand_indices = self.state.derive_hand_indices();
+        let hand_size = self.hand_indices.len();
+        self.hand_used = vec![false; hand_size];
+        self.hand_pitched = vec![false; hand_size];
+        self.hand_played = vec![false; hand_size];
+        self.board_pitched = Vec::new();
+        self.current_mana = 0;
     }
 
     fn run_battle(&mut self) {
@@ -438,10 +450,14 @@ impl GameEngine {
 
         let player_board: Vec<BoardUnit> =
             self.state.board.iter().filter_map(|s| s.clone()).collect();
-        
+
         let battle_seed = self.state.round as u64;
-        let enemy_board = get_opponent_for_round(self.state.round, &mut self.state.next_card_id, battle_seed + 999)
-            .expect("Failed to generate opponent for round");
+        let enemy_board = get_opponent_for_round(
+            self.state.round,
+            &mut self.state.next_card_id,
+            battle_seed + 999,
+        )
+        .expect("Failed to generate opponent for round");
 
         let mut rng = XorShiftRng::seed_from_u64(battle_seed);
         let events = resolve_battle(&player_board, &enemy_board, &mut rng);
