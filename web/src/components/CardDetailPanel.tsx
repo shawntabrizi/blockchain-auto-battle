@@ -373,6 +373,12 @@ export function CardDetailPanel({ card, isVisible, isSandbox = false }: CardDeta
             >
               Enter Multiplayer Mode
             </button>
+            <button
+              onClick={() => navigate('/blockchain')}
+              className="w-full btn bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 border border-yellow-700 text-xs py-2"
+            >
+              Enter Blockchain Mode
+            </button>
           </div>
         </div>
 

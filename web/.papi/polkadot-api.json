@@ -1,0 +1,12 @@
+{
+  "version": 0,
+  "descriptorPath": ".papi/descriptors",
+  "entries": {
+    "auto_battle": {
+      "wsUrl": "ws://127.0.0.1:9944",
+      "metadata": ".papi/metadata/auto_battle.scale",
+      "genesis": "0x4545454545454545454545454545454545454545454545454545454545454545",
+      "codeHash": "0x8730d5cb337d8092d90f1519f550ab21127ab9b2bf6328879d45f13647991c01"
+    }
+  }
+}

@@ -436,6 +436,30 @@ impl GameEngine {
     pub fn set_phase_battle(&mut self) {
         self.state.phase = GamePhase::Battle;
     }
+
+    /// Get the current CommitTurnAction for the current turn
+    #[wasm_bindgen]
+    pub fn get_commit_action(&self) -> JsValue {
+        let action = manalimit_core::types::CommitTurnAction {
+            new_board: self.state.board.clone(),
+            pitched_from_hand: self
+                .hand_pitched
+                .iter()
+                .enumerate()
+                .filter(|(_, &p)| p)
+                .map(|(i, _)| i as u32)
+                .collect(),
+            played_from_hand: self
+                .hand_played
+                .iter()
+                .enumerate()
+                .filter(|(_, &p)| p)
+                .map(|(i, _)| i as u32)
+                .collect(),
+            pitched_from_board: self.board_pitched.iter().map(|&i| i as u32).collect(),
+        };
+        serde_wasm_bindgen::to_value(&action).unwrap_or(JsValue::NULL)
+    }
 }
 
 // Private implementation methods

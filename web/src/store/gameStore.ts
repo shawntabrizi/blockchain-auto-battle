@@ -1,18 +1,34 @@
 import { create } from 'zustand';
 import { toast } from 'react-hot-toast';
 import type { GameView, BattleOutput, Selection } from '../types';
-import type { GameEngine } from '../wasm/manalimit_core';
 
-type GameEngineInstance = GameEngine;
+interface GameEngine {
+  get_view: () => any;
+  get_battle_output: () => any;
+  pitch_hand_card: (index: number) => void;
+  play_hand_card: (handIndex: number, boardSlot: number) => void;
+  swap_board_positions: (slotA: number, slotB: number) => void;
+  pitch_board_unit: (boardSlot: number) => void;
+  end_turn: () => void;
+  continue_after_battle: () => void;
+  new_run: () => void;
+  get_state: () => any;
+  set_state: (state: any) => void;
+  get_board: () => any;
+  set_phase_battle: () => void;
+  resolve_battle_p2p: (player_board: any, enemy_board: any, seed: bigint) => any;
+  apply_battle_result: (result: any) => void;
+  get_commit_action: () => any;
+}
 
 interface WasmModule {
   default: () => Promise<void>;
-  GameEngine: typeof GameEngine;
+  GameEngine: { new (seed?: bigint): GameEngine };
   greet: () => string;
 }
 
 interface GameStore {
-  engine: GameEngineInstance | null;
+  engine: GameEngine | null;
   view: GameView | null;
   battleOutput: BattleOutput | null;
   isLoading: boolean;
@@ -34,6 +50,7 @@ interface GameStore {
   closeBattleOverlay: () => void;
   toggleShowRawJson: () => void;
   setShowBag: (show: boolean) => void;
+  getCommitAction: () => any;
 
   startMultiplayerGame: (seed: number) => void;
   resolveMultiplayerBattle: (opponentBoard: any, seed: number) => void;
@@ -167,6 +184,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setSelection: (selection: Selection | null) => { set({ selection }); },
   closeBattleOverlay: () => { set({ showBattleOverlay: false }); },
   setShowBag: (show: boolean) => { set({ showBag: show }); },
+  getCommitAction: () => {
+    const { engine } = get();
+    if (!engine) return null;
+    return engine.get_commit_action();
+  },
   toggleShowRawJson: () => {
     set((state) => {
       const newValue = !state.showRawJson;
