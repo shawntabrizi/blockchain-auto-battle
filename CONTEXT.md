@@ -56,41 +56,46 @@ burnCard: (index) => {
 
 ```markdown
 ## Combat Simulation Spec (Rust)
-The combat engine must be **Deterministic**. It takes two `BoardState` structs (Player and Enemy) and returns a `CombatLog` (a list of events for React to replay).
+The combat engine must be **Deterministic**. It takes two `BoardState` structs (Player and Enemy) and returns a `BattleOutput` (containing a list of events for React to replay).
+
+### The Priority System (Strict Hierarchy)
+When multiple units share a trigger, the resolution order is:
+1.  **Highest Attack:** The unit with the most Attack power goes first.
+2.  **Highest Health:** If Attack is tied, the unit with the most current Health goes first.
+3.  **Player Priority:** If stats are tied, the Player's unit triggers before the Enemy's unit.
+4.  **Front-Most:** If on the same team, the unit closer to the front (Index 0) triggers first.
+5.  **Ability Order:** If a unit has multiple abilities, they resolve in the order defined on the card.
+
+### Composable Ability System
+Abilities are constructed from:
+- **Trigger**: `onStart`, `onFaint`, `onHurt`, `onAllySpawn`, etc.
+- **Target**: `Position`, `Standard` (stat-based), `Random`, `All`, `Adjacent`.
+- **Effect**: `Damage`, `ModifyStats`, `SpawnUnit`, `Destroy`.
+- **Condition**: Optional logic gates (`StatValueCompare`, `UnitCount`, `And/Or/Not`).
 
 ### The Loop Logic
 While both teams have units > 0:
 
-1.  **Phase: Trigger Check (Start of Battle)**
-    - Collect all "On Start" triggers from both teams.
-    - **Sort:**
-      1. Highest Attack Stat (Descending).
-      2. Deterministic RNG (Tie-breaker).
-    - Execute triggers in order.
+1.  **Phase: Start of Battle**
+    - Collect all "On Start" triggers. Resolve via Priority Queue.
 
-2.  **Phase: Attack Step**
-    - Identify Front Unit (Index 0) of Team A and Team B.
-    - **Simultaneous Strike:**
-      - Calculate Damage A -> B.
-      - Calculate Damage B -> A.
-    - Apply Damage to both units *at the same time*.
+2.  **Phase: Attack Loop**
+    - **Before Attack**: Resolve `BeforeAnyAttack` and `BeforeUnitAttack` (front units only).
+    - **The Clash**: Front units strike simultaneously.
+    - **Hurt & Faint Loop**: Resolve `OnHurt`, `OnFaint`, `OnAllyFaint` triggers recursively.
+    - **After Attack**: Resolve `AfterAnyAttack` and `AfterUnitAttack`.
 
-3.  **Phase: Death Check**
-    - Remove units with HP <= 0.
-    - Trigger "On Faint" effects (Sort by Attack if simultaneous).
-    - **Slide:** Remaining units slide forward to fill Index 0.
-
-4.  **Repeat** until one or both teams are empty.
+3.  **Slide Logic**: When a unit dies, survivors slide forward to fill the gap.
 
 ### Output Format
-Return a `Vec<CombatEvent>` so the UI can play it like a movie.
-
+Return a `Vec<CombatEvent>` for UI playback.
 ```rust
-enum CombatEvent {
-    Attack { attacker_idx: usize, target_idx: usize, damage: i32 },
-    AbilityTrigger { unit_idx: usize, ability_name: String },
-    UnitDeath { unit_idx: usize },
-    Wait { ms: u64 }, // Pacing for animation
+pub enum CombatEvent {
+    Clash { p_dmg: i32, e_dmg: i32 },
+    AbilityTrigger { source_instance_id: UnitInstanceId, ability_name: String },
+    AbilityDamage { source_instance_id: UnitInstanceId, target_instance_id: UnitInstanceId, damage: i32, remaining_hp: i32 },
+    UnitDeath { team: Team, new_board_state: Vec<UnitView> },
+    UnitSpawn { team: Team, spawned_unit: UnitView, new_board_state: Vec<UnitView> },
+    // ... other events
 }
-
 ```

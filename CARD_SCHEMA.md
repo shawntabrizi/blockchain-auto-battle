@@ -1,8 +1,8 @@
-# Manalimit: Card Architecture & Schema (MVP)
+# Manalimit: Card Architecture & Schema (Composable System)
 
 ## 1. Overview
 
-In the **Manalimit** MVP, we focus exclusively on **Unit Cards**. Every card in the deck is a Unit that can be played on the board or pitched for mana.
+In the **Manalimit** MVP, we focus exclusively on **Unit Cards**. Every card in the deck is a Unit that can be played on the board or pitched for mana. The ability system has been refactored from a flat enum structure into a **composable building block** system for greater flexibility.
 
 ## 2. The Data Model (Rust Structs)
 
@@ -20,6 +20,7 @@ pub struct UnitCard {
     pub stats: UnitStats,       // Attack/Health
     pub economy: EconomyStats,  // Cost/Pitch
     pub abilities: Vec<Ability>,// Logic
+    pub is_token: bool,         // True if generated during battle
 }
 ```
 
@@ -41,11 +42,44 @@ pub struct EconomyStats {
 }
 ```
 
-## 3. The Ability System
+## 3. The Composable Ability System
 
-The ability system is robust and supports triggers, conditions, targets, and effects.
+The system uses several building block enums to construct complex logic.
 
-### A. The Ability Struct
+### A. Building Blocks
+
+```rust
+pub enum TargetScope {
+    SelfUnit,       // The unit with the ability
+    Allies,         // All units on same team
+    Enemies,        // All units on opposing team
+    All,             // Every unit on board
+    AlliesOther,    // Allies excluding self
+    TriggerSource,  // The unit that caused the trigger (e.g., the unit that died)
+    Aggressor,      // Alias for TriggerSource initially
+}
+
+pub enum StatType {
+    Health,
+    Attack,
+    Mana,           // Maps to play_cost
+}
+
+pub enum SortOrder {
+    Ascending,      // Lowest to Highest
+    Descending,     // Highest to Lowest
+}
+
+pub enum CompareOp {
+    GreaterThan,
+    LessThan,
+    Equal,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+}
+```
+
+### B. The Ability Struct
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -64,7 +98,7 @@ pub struct Ability {
 }
 ```
 
-### B. Ability Triggers (`AbilityTrigger`)
+### C. Ability Triggers (`AbilityTrigger`)
 
 Defines *when* the ability activates.
 
@@ -73,140 +107,123 @@ pub enum AbilityTrigger {
     OnStart,            // Start of Battle
     OnFaint,            // When THIS unit dies
     OnAllyFaint,        // When another ally dies
-    OnDamageTaken,      // When THIS unit takes damage
+    OnHurt,             // When THIS unit takes damage (formerly OnDamageTaken)
     OnSpawn,            // When THIS unit is summoned
-    BeforeUnitAttack,   // Before THIS unit attacks
-    AfterUnitAttack,    // After THIS unit attacks
-    BeforeAnyAttack,    // Before ANY unit attacks
-    AfterAnyAttack,     // After ANY unit attacks
+    OnAllySpawn,        // When an ally is summoned
+    OnEnemySpawn,       // When an enemy is summoned
+    BeforeUnitAttack,   // Before THIS unit attacks (must be in front)
+    AfterUnitAttack,    // After THIS unit attacks (must be in front)
+    BeforeAnyAttack,    // Before ANY unit clash occurs
+    AfterAnyAttack,     // After ANY unit clash occurs
 }
 ```
 
-### C. Ability Targets (`AbilityTarget`)
+### D. Ability Targets (`AbilityTarget`)
 
-Defines *who* is affected.
+Defines *who* is affected using composable logic.
 
 ```rust
+#[serde(tag = "type", content = "data", rename_all = "camelCase")]
 pub enum AbilityTarget {
-    SelfUnit,
-    AllAllies,
-    AllEnemies,
-    RandomAlly,
-    RandomEnemy,
-    FrontAlly,
-    FrontEnemy,
-    BackAlly,
-    BackEnemy,
-    AllyAhead,
-    LowestHealthEnemy,
-    HighestAttackEnemy,
-    HighestHealthEnemy,
-    LowestAttackEnemy,
-    HighestManaEnemy,
-    LowestManaEnemy,
-}
-```
-
-### D. Ability Effects (`AbilityEffect`)
-
-Defines *what* happens.
-
-```rust
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum AbilityEffect {
-    Damage { amount: i32, target: AbilityTarget },
-    ModifyStats { health: i32, attack: i32, target: AbilityTarget },
-    SpawnUnit { template_id: String },
-    Destroy { target: AbilityTarget },
+    /// Specific position (0=front, -1=back). scope=SelfUnit means relative (-1 ahead, 1 behind).
+    Position { scope: TargetScope, index: i32 },
+    /// Neighbors of the unit(s) in scope.
+    Adjacent { scope: TargetScope },
+    /// Random units from scope.
+    Random { scope: TargetScope, count: u32 },
+    /// Selection based on stats (e.g., Highest Attack).
+    Standard {
+        scope: TargetScope,
+        stat: StatType,
+        order: SortOrder,
+        count: u32,
+    },
+    /// Everyone in scope.
+    All { scope: TargetScope },
 }
 ```
 
 ### E. Conditions (`AbilityCondition`)
 
-Logic gates that must be true for the ability to fire.
+Composable logic gates.
 
 ```rust
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type", content = "data", rename_all = "camelCase")]
 pub enum AbilityCondition {
     None,
-
-    // Target Checks
-    TargetHealthLessThanOrEqual { value: i32 },
-    TargetHealthGreaterThan { value: i32 },
-    TargetAttackLessThanOrEqual { value: i32 },
-    TargetAttackGreaterThan { value: i32 },
-
-    // Source Checks
-    SourceHealthLessThanOrEqual { value: i32 },
-    SourceHealthGreaterThan { value: i32 },
-    SourceAttackLessThanOrEqual { value: i32 },
-    SourceAttackGreaterThan { value: i32 },
-    SourceIsFront,
-    SourceIsBack,
-
-    // Board Checks
-    AllyCountAtLeast { count: usize },
-    AllyCountAtMost { count: usize },
-
-    // Logic
+    /// Compare a unit's stat to a constant value
+    StatValueCompare { scope: TargetScope, stat: StatType, op: CompareOp, value: i32 },
+    /// Compare source stat vs target unit's stat
+    StatStatCompare { source_stat: StatType, op: CompareOp, target_scope: TargetScope, target_stat: StatType },
+    /// Count units in a scope
+    UnitCount { scope: TargetScope, op: CompareOp, value: u32 },
+    /// Check if source is at specific index
+    IsPosition { scope: TargetScope, index: i32 },
+    
+    // Logic Gates
     And { left: Box<AbilityCondition>, right: Box<AbilityCondition> },
     Or { left: Box<AbilityCondition>, right: Box<AbilityCondition> },
     Not { inner: Box<AbilityCondition> },
 }
 ```
 
-## 4. JSON Examples (Runtime View)
+## 4. JSON Examples (Refactored View)
 
-This is what the React Frontend receives in `view.shop[i].card`.
-
-### Example 1: Basic Unit (Goblin Looter)
+### Example 1: Stat-based Targeting (Headhunter)
 
 ```json
 {
-  "id": 101,
-  "templateId": "goblin_looter",
-  "name": "Goblin Looter",
-  "stats": { "attack": 2, "health": 1 },
-  "economy": { "playCost": 1, "pitchValue": 3 },
+  "templateId": "headhunter",
+  "name": "Headhunter",
   "abilities": [
     {
-      "name": "Loot",
-      "description": "On Faint: Deal 1 damage to a random enemy.",
-      "trigger": "OnFaint",
+      "name": "Assassinate",
+      "trigger": "onStart",
       "effect": {
-        "type": "Damage",
-        "amount": 1,
-        "target": "RandomEnemy"
-      },
-      "condition": { "type": "None" }
+        "type": "damage",
+        "amount": 5,
+        "target": {
+          "type": "standard",
+          "data": {
+            "scope": "enemies",
+            "stat": "health",
+            "order": "ascending",
+            "count": 1
+          }
+        }
+      }
     }
   ]
 }
 ```
 
-### Example 2: Complex Conditional (Pack Leader)
+### Example 2: Positional & Conditional (Nurse Goblin)
 
 ```json
 {
-  "id": 205,
-  "templateId": "pack_leader",
-  "name": "Pack Leader",
-  "stats": { "attack": 4, "health": 4 },
-  "economy": { "playCost": 5, "pitchValue": 1 },
+  "templateId": "nurse_goblin",
+  "name": "Nurse Goblin",
   "abilities": [
     {
-      "name": "Command",
-      "description": "Start of Battle: If you have 4+ allies, give everyone +2/+2.",
-      "trigger": "OnStart",
+      "name": "Emergency Heal",
+      "trigger": "beforeAnyAttack",
       "effect": {
-        "type": "ModifyStats",
-        "attack": 2,
+        "type": "modifyStats",
         "health": 2,
-        "target": "AllAllies"
+        "attack": 0,
+        "target": {
+          "type": "position",
+          "data": { "scope": "allies", "index": 0 }
+        }
       },
       "condition": {
-        "type": "AllyCountAtLeast",
-        "count": 4
+        "type": "statValueCompare",
+        "data": {
+          "scope": "allies",
+          "stat": "health",
+          "op": "lessThanOrEqual",
+          "value": 6
+        }
       }
     }
   ]
