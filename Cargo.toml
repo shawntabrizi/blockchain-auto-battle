@@ -29,6 +29,7 @@ polkadot-sdk = { version = "2503.0.1", default-features = false }
 prometheus-endpoint = { version = "0.17.2", default-features = false, package = "substrate-prometheus-endpoint" }
 serde = { version = "1.0.214", default-features = false }
 codec = { version = "3.7.4", default-features = false, package = "parity-scale-codec" }
+parity-scale-codec = { version = "3.7.4", default-features = false }
 cumulus-pallet-parachain-system = { version = "0.20.0", default-features = false }
 hex-literal = { version = "0.4.1", default-features = false }
 scale-info = { version = "2.11.6", default-features = false }
@@ -36,3 +37,20 @@ serde_json = { version = "1.0.132", default-features = false }
 smallvec = { version = "1.11.0", default-features = false }
 substrate-wasm-builder = { version = "26.0.1", default-features = false }
 frame = { version = "0.9.1", default-features = false, package = "polkadot-sdk-frame" }
+bounded-collections = { version = "0.2.4", default-features = false }
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1"
+wee_alloc = "0.4"
+web-sys = { version = "0.3", features = ["console"] }
+getrandom = { version = "0.2", features = ["js"] }
+wasm-bindgen-test = "0.3"
+
+[profile.release]
+opt-level = 3
+panic = "unwind"
+
+[profile.production]
+codegen-units = 1
+inherits = "release"
+lto = true

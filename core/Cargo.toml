@@ -1,7 +1,11 @@
 [package]
 name = "manalimit-core"
 version = "0.2.0"
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [lib]
 crate-type = ["rlib"]
@@ -18,13 +22,13 @@ bounded = ["dep:bounded-collections"]
 
 [dependencies]
 # Core (always included, no_std compatible)
-parity-scale-codec = { version = "3.7.4", default-features = false, features = ["derive", "max-encoded-len"] }
-scale-info = { version = "2.11.6", default-features = false, features = ["derive"] }
-serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
-bounded-collections = { version = "0.2.4", default-features = false, optional = true }
+parity-scale-codec = { workspace = true, features = ["derive", "max-encoded-len"] }
+scale-info = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "alloc"] }
+bounded-collections = { workspace = true, optional = true }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3"
+wasm-bindgen-test = { workspace = true }
 
 [profile.release]
 opt-level = "s"
