@@ -15,7 +15,7 @@ fn test_start_game() {
         assert_eq!(session.owner, account_id);
         assert_eq!(session.state.round, 1);
         assert_eq!(session.state.phase, GamePhase::Shop);
-        assert_eq!(session.state.bag.len(), 10); // 10 Rats from mock genesis
+        assert_eq!(session.state.bag.len(), 100); // 100 cards from starter templates
 
         // Assert cannot start another game
         assert_noop!(

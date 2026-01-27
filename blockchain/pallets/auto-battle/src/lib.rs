@@ -27,7 +27,8 @@ pub mod pallet {
         BoundedGameState as CoreBoundedGameState,
     };
     use manalimit_core::{
-        verify_and_apply_turn, BattleResult, CommitTurnAction, GamePhase, GameState, UnitCard,
+        get_starter_templates, verify_and_apply_turn, BattleResult, CommitTurnAction, GamePhase,
+        GameState, UnitCard,
     };
 
     #[pallet::pallet]
@@ -312,21 +313,32 @@ pub mod pallet {
             u64::from_le_bytes(bytes)
         }
 
-        /// Create a mock genesis bag of 10 "Rat" cards
+        /// Create a mock genesis bag of 100 cards from starter templates
         fn get_mock_genesis_bag() -> Vec<UnitCard> {
+            let templates = get_starter_templates();
+            // Filter out tokens
+            let deck_templates: Vec<_> = templates.into_iter().filter(|t| !t.is_token).collect();
+
             let mut bag = Vec::new();
-            // Create 10 Rats
-            for i in 0..10 {
-                bag.push(UnitCard::new(
-                    i + 1, // IDs 1-10
-                    "rat",
-                    "Rat",
-                    1, // 1 Atk
-                    1, // 1 HP
-                    1, // 1 Mana Cost
-                    1, // 1 Pitch Value
-                    false,
-                ));
+            if deck_templates.is_empty() {
+                return bag;
+            }
+
+            for i in 0..100 {
+                let template = &deck_templates[i % deck_templates.len()];
+                bag.push(
+                    UnitCard::new(
+                        (i + 1) as u32,
+                        template.template_id,
+                        template.name,
+                        template.attack,
+                        template.health,
+                        template.play_cost,
+                        template.pitch_value,
+                        template.is_token,
+                    )
+                    .with_abilities(template.abilities.clone()),
+                );
             }
             bag
         }
