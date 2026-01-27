@@ -15,7 +15,19 @@ pub const MAX_TRIGGERS_PER_PHASE: u32 = 200;
 pub const MAX_TRIGGER_DEPTH: u32 = 10;
 pub const MAX_BATTLE_ROUNDS: u32 = 100;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "SCREAMING_SNAKE_CASE"))]
 pub enum Team {
@@ -23,7 +35,9 @@ pub enum Team {
     Enemy,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(
     feature = "std",

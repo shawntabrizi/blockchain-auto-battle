@@ -71,8 +71,9 @@ impl GameEngine {
     #[wasm_bindgen]
     pub fn submit_turn(&mut self, action_js: JsValue) -> Result<(), String> {
         log::action("submit_turn", "Applying turn action from JS");
-        let action: manalimit_core::types::CommitTurnAction = serde_wasm_bindgen::from_value(action_js)
-            .map_err(|e| format!("Failed to parse action: {:?}", e))?;
+        let action: manalimit_core::types::CommitTurnAction =
+            serde_wasm_bindgen::from_value(action_js)
+                .map_err(|e| format!("Failed to parse action: {:?}", e))?;
 
         // We must rollback board to start_board because verify_and_apply_turn expects
         // state as it was at the beginning of the turn.
@@ -418,8 +419,9 @@ impl GameEngine {
     /// Apply a battle result to the game state (for P2P)
     #[wasm_bindgen]
     pub fn apply_battle_result(&mut self, result_val: JsValue) -> Result<(), String> {
-        let result: manalimit_core::battle::BattleResult = serde_wasm_bindgen::from_value(result_val)
-            .map_err(|e| format!("Failed to parse result: {:?}", e))?;
+        let result: manalimit_core::battle::BattleResult =
+            serde_wasm_bindgen::from_value(result_val)
+                .map_err(|e| format!("Failed to parse result: {:?}", e))?;
 
         match result {
             manalimit_core::battle::BattleResult::Victory => self.state.wins += 1,

@@ -5,8 +5,8 @@
 use std::string::String;
 use std::vec::Vec;
 
-use manalimit_core::battle::{resolve_battle, UnitId, UnitView};
 use crate::engine::BattleOutput;
+use manalimit_core::battle::{resolve_battle, UnitId, UnitView};
 use manalimit_core::log;
 use manalimit_core::rng::XorShiftRng;
 use manalimit_core::types::{BoardUnit, UnitCard};

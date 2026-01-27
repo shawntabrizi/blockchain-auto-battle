@@ -115,7 +115,9 @@ fn test_priority_tiebreaker_team() {
         effect: AbilityEffect::ModifyStats {
             health: 1,
             attack: 0,
-            target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+            target: AbilityTarget::All {
+                scope: TargetScope::SelfUnit,
+            },
         },
         name: "EnemyTrigger".to_string(),
         description: "Test".to_string(),
@@ -210,7 +212,9 @@ fn test_priority_tiebreaker_ability_order() {
         AbilityEffect::ModifyStats {
             health: 0,
             attack: 0,
-            target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+            target: AbilityTarget::All {
+                scope: TargetScope::SelfUnit,
+            },
         },
         "AbilityA",
     );
@@ -220,7 +224,9 @@ fn test_priority_tiebreaker_ability_order() {
         AbilityEffect::ModifyStats {
             health: 0,
             attack: 0,
-            target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+            target: AbilityTarget::All {
+                scope: TargetScope::SelfUnit,
+            },
         },
         "AbilityB",
     );
@@ -278,7 +284,9 @@ fn test_priority_full_hierarchy_with_ability_order() {
             AbilityEffect::ModifyStats {
                 health: 0,
                 attack: 0,
-                target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+                target: AbilityTarget::All {
+                    scope: TargetScope::SelfUnit,
+                },
             },
             "U1",
         )),
@@ -297,7 +305,9 @@ fn test_priority_full_hierarchy_with_ability_order() {
             AbilityEffect::ModifyStats {
                 health: 0,
                 attack: 0,
-                target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+                target: AbilityTarget::All {
+                    scope: TargetScope::SelfUnit,
+                },
             },
             "U4",
         )),
@@ -309,7 +319,9 @@ fn test_priority_full_hierarchy_with_ability_order() {
         AbilityEffect::ModifyStats {
             health: 0,
             attack: 0,
-            target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+            target: AbilityTarget::All {
+                scope: TargetScope::SelfUnit,
+            },
         },
         "U5-A",
     );
@@ -319,7 +331,9 @@ fn test_priority_full_hierarchy_with_ability_order() {
         AbilityEffect::ModifyStats {
             health: 0,
             attack: 0,
-            target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+            target: AbilityTarget::All {
+                scope: TargetScope::SelfUnit,
+            },
         },
         "U5-B",
     );
@@ -377,7 +391,9 @@ fn test_priority_full_hierarchy() {
         AbilityEffect::ModifyStats {
             health: 0,
             attack: 0,
-            target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+            target: AbilityTarget::All {
+                scope: TargetScope::SelfUnit,
+            },
         },
         "U1",
     );
@@ -400,7 +416,9 @@ fn test_priority_full_hierarchy() {
         AbilityEffect::ModifyStats {
             health: 0,
             attack: 0,
-            target: AbilityTarget::All { scope: TargetScope::SelfUnit },
+            target: AbilityTarget::All {
+                scope: TargetScope::SelfUnit,
+            },
         },
         "U4",
     );
@@ -455,7 +473,10 @@ fn test_priority_interruption_kill() {
         trigger: AbilityTrigger::OnStart,
         effect: AbilityEffect::Damage {
             amount: 5,
-            target: AbilityTarget::Position { scope: TargetScope::Enemies, index: 0 },
+            target: AbilityTarget::Position {
+                scope: TargetScope::Enemies,
+                index: 0,
+            },
         },
         name: "KillShot".to_string(),
         description: "Deals 5 damage".to_string(),
@@ -467,7 +488,10 @@ fn test_priority_interruption_kill() {
         trigger: AbilityTrigger::OnStart,
         effect: AbilityEffect::Damage {
             amount: 5,
-            target: AbilityTarget::Position { scope: TargetScope::Enemies, index: 0 },
+            target: AbilityTarget::Position {
+                scope: TargetScope::Enemies,
+                index: 0,
+            },
         },
         name: "LateShot".to_string(),
         description: "Deals 5 damage".to_string(),
@@ -598,7 +622,10 @@ fn test_recursive_interrupt_timing() {
         AbilityTrigger::OnStart,
         AbilityEffect::Damage {
             amount: 5,
-            target: AbilityTarget::Position { scope: TargetScope::Enemies, index: 0 },
+            target: AbilityTarget::Position {
+                scope: TargetScope::Enemies,
+                index: 0,
+            },
         },
         "Snipe",
     );
@@ -650,7 +677,8 @@ fn test_recursive_interrupt_timing() {
     let second_dmg_event = damage_events.last().unwrap();
     if let CombatEvent::AbilityDamage {
         target_instance_id, ..
-    } = second_dmg_event {
+    } = second_dmg_event
+    {
         // The instance ID of a spawned unit should be the next enemy ID (e-2)
         assert!(
             *target_instance_id == UnitId::enemy(2),

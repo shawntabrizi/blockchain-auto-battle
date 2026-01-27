@@ -338,7 +338,11 @@ fn test_spawn_id_uniqueness_and_buffs() {
         None
     });
 
-    assert_eq!(spawn_final_atk, Some(3), "Spawned unit should have 3 attack (1 base + 2 buff).");
+    assert_eq!(
+        spawn_final_atk,
+        Some(3),
+        "Spawned unit should have 3 attack (1 base + 2 buff)."
+    );
 }
 
 #[test]

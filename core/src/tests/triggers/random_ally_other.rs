@@ -39,8 +39,14 @@ fn test_random_ally_other_targeting() {
             if *target_instance_id == UnitId::player(1))
     });
 
-    assert!(soldier_buffed, "Soldier should have been buffed by Commander");
-    assert!(!commander_buffed, "Commander should not have buffed themselves");
+    assert!(
+        soldier_buffed,
+        "Soldier should have been buffed by Commander"
+    );
+    assert!(
+        !commander_buffed,
+        "Commander should not have buffed themselves"
+    );
 }
 
 #[test]
@@ -66,9 +72,12 @@ fn test_random_ally_other_fizzle() {
 
     let events = run_battle(&p_board, &e_board, 42);
 
-    let buff_occurred = events.iter().any(|e| {
-        matches!(e, CombatEvent::AbilityModifyStats { .. })
-    });
+    let buff_occurred = events
+        .iter()
+        .any(|e| matches!(e, CombatEvent::AbilityModifyStats { .. }));
 
-    assert!(!buff_occurred, "No buff should occur when there are no other allies");
+    assert!(
+        !buff_occurred,
+        "No buff should occur when there are no other allies"
+    );
 }

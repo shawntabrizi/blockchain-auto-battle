@@ -135,7 +135,7 @@ pub mod pallet {
         /// Start a new game session.
         /// Generates a random seed and initializes the game state with a mock deck.
         #[pallet::call_index(0)]
-        #[pallet::weight(10_000)] // TODO: Calculate weights
+        #[pallet::weight(Weight::default())]
         pub fn start_game(origin: OriginFor<T>) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -170,7 +170,7 @@ pub mod pallet {
         /// Submit actions for the Shop Phase.
         /// Verifies the moves using the core engine and updates the state.
         #[pallet::call_index(1)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(Weight::default())]
         pub fn submit_shop_phase(
             origin: OriginFor<T>,
             action: BoundedCommitTurnAction<T>,
@@ -218,7 +218,7 @@ pub mod pallet {
         /// Report the result of a battle (Optimistic).
         /// Updates wins/lives and proceeds to next round.
         #[pallet::call_index(2)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(Weight::default())]
         pub fn report_battle_outcome(origin: OriginFor<T>, result: BattleResult) -> DispatchResult {
             let who = ensure_signed(origin)?;
 

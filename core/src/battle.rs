@@ -26,7 +26,19 @@ pub use crate::limits::Team;
 // A unique ID for a unit instance in a battle
 // High bit (31) determines team: 0 = Player, 1 = Enemy.
 // This ensures IDs are unique and stable per team.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(transparent))]
 pub struct UnitId(pub u32);
@@ -71,7 +83,9 @@ pub struct UnitView {
     pub is_token: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "SCREAMING_SNAKE_CASE"))]
 pub enum BattleResult {
@@ -1529,7 +1543,10 @@ fn resolve_scope_units<'a>(
         TargetScope::Allies => allies.iter().collect(),
         TargetScope::Enemies => enemies.iter().collect(),
         TargetScope::All => player_units.iter().chain(enemy_units.iter()).collect(),
-        TargetScope::AlliesOther => allies.iter().filter(|u| u.instance_id != source_id).collect(),
+        TargetScope::AlliesOther => allies
+            .iter()
+            .filter(|u| u.instance_id != source_id)
+            .collect(),
         TargetScope::TriggerSource | TargetScope::Aggressor => {
             if let Some(tid) = trigger_target_id {
                 if let Some(u) = find_unit_in_slices(tid, player_units, enemy_units) {
