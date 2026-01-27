@@ -315,7 +315,7 @@ mod runtime {
 
     // Template
     #[runtime::pallet_index(50)]
-    pub type TemplatePallet = pallet_auto_battle;
+    pub type AutoBattle = pallet_auto_battle;
 }
 
 #[docify::export(register_validate_block)]
