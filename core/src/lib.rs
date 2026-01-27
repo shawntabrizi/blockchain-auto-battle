@@ -31,6 +31,9 @@ mod sandbox;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "bounded")]
+pub mod bounded;
+
 // Core exports (always available)
 pub use battle::{
     resolve_battle, BattlePhase, BattleResult, CombatEvent, CombatUnit, UnitId, UnitView,

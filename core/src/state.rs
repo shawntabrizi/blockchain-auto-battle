@@ -4,7 +4,7 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode};
 use scale_info::TypeInfo;
 
 use crate::rng::{BattleRng, XorShiftRng};
@@ -27,7 +27,7 @@ pub const MAX_MANA_LIMIT: i32 = 10;
 pub const WINS_TO_VICTORY: i32 = 10;
 
 /// Current phase of the game
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GamePhase {
@@ -38,7 +38,7 @@ pub enum GamePhase {
 }
 
 /// The complete game state
-#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, DecodeWithMemTracking, TypeInfo, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct GameState {
