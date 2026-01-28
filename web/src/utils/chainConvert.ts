@@ -19,8 +19,9 @@ export const chainStateToWasm = (val: any): any => {
   }
 
   if (val instanceof Enum) {
-    const type = val.type;
-    const value = val.value;
+    const enumVal = val as any;
+    const type = enumVal.type;
+    const value = enumVal.value;
 
     if (value === undefined) {
       // For unit variants, check if they belong to a tagged enum type
