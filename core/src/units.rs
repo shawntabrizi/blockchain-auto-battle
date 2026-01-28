@@ -2,10 +2,12 @@
 //!
 //! This module contains all unit card templates used in the game.
 
+use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-
+use crate::rng::BattleRng;
+use crate::state::CardSet;
 use crate::types::{
     Ability, AbilityCondition, AbilityEffect, AbilityTarget, AbilityTrigger, CompareOp,
     EconomyStats, SortOrder, StatType, TargetScope, UnitCard, UnitStats,
@@ -1044,35 +1046,84 @@ pub fn get_starter_templates() -> Vec<CardTemplate> {
     ]
 }
 
-/// Create a standard starting bag of cards for a new game.
-pub fn create_genesis_bag() -> Vec<UnitCard> {
+/// Get all card templates with unique, stable CardIds
+pub fn get_all_templates() -> Vec<UnitCard> {
+    let mut cards = Vec::new();
     let templates = get_starter_templates();
-    let mut bag = Vec::with_capacity(100);
 
-    let non_token_templates: Vec<_> = templates.into_iter().filter(|t| !t.is_token).collect();
-
-    if non_token_templates.is_empty() {
-        return bag;
-    }
-
-    for i in 0..100 {
-        let template = &non_token_templates[i % non_token_templates.len()];
+    for (i, t) in templates.into_iter().enumerate() {
         let card = UnitCard {
             id: crate::types::CardId((i as u32) + 1),
-            template_id: String::from(template.template_id),
-            name: String::from(template.name),
+            template_id: String::from(t.template_id),
+            name: String::from(t.name),
             stats: UnitStats {
-                attack: template.attack,
-                health: template.health,
+                attack: t.attack,
+                health: t.health,
             },
             economy: EconomyStats {
-                play_cost: template.play_cost,
-                pitch_value: template.pitch_value,
+                play_cost: t.play_cost,
+                pitch_value: t.pitch_value,
             },
-            abilities: template.abilities.clone(),
-            is_token: template.is_token,
+            abilities: t.abilities,
+            is_token: t.is_token,
         };
-        bag.push(card);
+        cards.push(card);
+    }
+    cards
+}
+
+/// Get the list of Template CardIds that belong to a specific set
+pub fn get_set_template_ids(set_id: u32) -> Vec<crate::types::CardId> {
+    match set_id {
+        0 => {
+            // Set 0 includes all non-token cards from the starter templates
+            get_all_templates()
+                .into_iter()
+                .filter(|c| !c.is_token)
+                .map(|c| c.id)
+                .collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// Get a complete CardSet for a given set_id (contains definitions for all cards in the set)
+pub fn get_card_set(set_id: u32) -> Option<CardSet> {
+    let template_ids = get_set_template_ids(set_id);
+    if template_ids.is_empty() && set_id != 0 {
+        return None;
+    }
+
+    let all_templates = get_all_templates();
+    let mut card_pool = BTreeMap::new();
+
+    for id in template_ids {
+        if let Some(template) = all_templates.iter().find(|t| t.id == id) {
+            card_pool.insert(id, template.clone());
+        }
+    }
+
+    // Also include tokens in the pool so they are available for battle resolution/view
+    for template in all_templates.iter().filter(|t| t.is_token) {
+        card_pool.insert(template.id, template.clone());
+    }
+
+    Some(CardSet { card_pool })
+}
+
+/// Create a bag of 100 random CardIds from a specific set
+pub fn create_genesis_bag(set_id: u32, seed: u64) -> Vec<crate::types::CardId> {
+    let template_ids = get_set_template_ids(set_id);
+    if template_ids.is_empty() {
+        return Vec::new();
+    }
+
+    let mut bag = Vec::with_capacity(100);
+    let mut rng = crate::rng::XorShiftRng::seed_from_u64(seed);
+
+    for _ in 0..100 {
+        let idx = rng.gen_range(template_ids.len());
+        bag.push(template_ids[idx]);
     }
 
     bag

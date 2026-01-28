@@ -14,7 +14,6 @@ use manalimit_core::opponents::get_opponent_for_round;
 use manalimit_core::rng::XorShiftRng;
 use manalimit_core::state::*;
 use manalimit_core::types::{BoardUnit, CardId, CommitTurnAction, UnitCard};
-use manalimit_core::units::get_starter_templates;
 use manalimit_core::view::{CardView, GameView};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -31,6 +30,7 @@ pub struct BattleOutput {
 #[wasm_bindgen]
 pub struct GameEngine {
     state: GameState,
+    set_id: u32,
     last_battle_output: Option<BattleOutput>,
     // Per-turn local tracking (transient, not persisted)
     current_mana: i32,
@@ -50,6 +50,7 @@ impl GameEngine {
         let seed_val = seed.unwrap_or(42);
         let mut engine = Self {
             state: GameState::new(seed_val),
+            set_id: 0,
             last_battle_output: None,
             current_mana: 0,
             hand_used: Vec::new(),
@@ -62,14 +63,6 @@ impl GameEngine {
         engine.start_planning_phase();
         engine.log_state();
         engine
-    }
-
-    /// Helper to mint a new card and add it to the pool
-    fn mint_card(&mut self, mut card: UnitCard) -> CardId {
-        let id = self.state.generate_card_id();
-        card.id = id;
-        self.state.card_pool.insert(id, card);
-        id
     }
 
     /// Helper to get a card from the pool
@@ -488,29 +481,21 @@ impl GameEngine {
     }
 
     fn initialize_bag(&mut self) {
-        self.state.bag.clear();
+        self.state.local_state.bag.clear();
         self.state.card_pool.clear();
-        let templates = get_starter_templates();
-        for template in &templates {
-            if template.is_token {
-                continue;
-            }
-            for _ in 0..3 {
-                let card = UnitCard::new(
-                    CardId(0), // Placeholder, will be set by mint_card
-                    template.template_id,
-                    template.name,
-                    template.attack,
-                    template.health,
-                    template.play_cost,
-                    template.pitch_value,
-                    template.is_token,
-                )
-                .with_abilities(template.abilities.clone());
-                let id = self.mint_card(card);
-                self.state.bag.push(id);
-            }
+        
+        // Use get_card_set to populate pool
+        use manalimit_core::units::{get_card_set, create_genesis_bag};
+        if let Some(card_set) = get_card_set(self.set_id) {
+            self.state.card_pool = card_set.card_pool;
         }
+
+        // Generate random bag of 100 cards from the set
+        self.state.local_state.bag = create_genesis_bag(self.set_id, self.state.game_seed);
+        
+        // Set next_card_id to be after templates
+        self.state.local_state.next_card_id = 1000; 
+
         // Draw initial hand once bag is ready
         self.state.draw_hand();
     }

@@ -29,8 +29,9 @@ pub mod pallet {
         BoundedLocalGameState as CoreBoundedLocalGameState,
     };
     use manalimit_core::{
-        create_genesis_bag, verify_and_apply_turn, BattleResult, CardSet, CommitTurnAction,
+        verify_and_apply_turn, BattleResult, CardSet, CommitTurnAction,
         GamePhase, GameState,
+        units::{get_card_set, create_genesis_bag},
     };
 
     #[pallet::pallet]
@@ -167,13 +168,9 @@ pub mod pallet {
                 Error::<T>::GameAlreadyActive
             );
 
-            // Check if card set exists, if not, create it (MVP: auto-create if missing)
+            // Check if card set exists, if not, create it from core templates
             if !CardSets::<T>::contains_key(set_id) {
-                let mut card_pool = alloc::collections::BTreeMap::new();
-                for card in create_genesis_bag() {
-                    card_pool.insert(card.id, card);
-                }
-                let card_set = CardSet { card_pool };
+                let card_set = get_card_set(set_id).ok_or(Error::<T>::CardSetNotFound)?;
                 CardSets::<T>::insert(set_id, BoundedCardSet::<T>::from(card_set));
             }
 
@@ -185,7 +182,7 @@ pub mod pallet {
 
             // Create initial state
             let mut state = GameState::reconstruct(card_set.card_pool, manalimit_core::state::LocalGameState {
-                bag: Vec::new(),
+                bag: create_genesis_bag(set_id, seed),
                 hand: Vec::new(),
                 board: vec![None; 5], // BOARD_SIZE is 5
                 mana_limit: 3, // STARTING_MANA_LIMIT is 3
@@ -193,14 +190,9 @@ pub mod pallet {
                 lives: 3, // STARTING_LIVES is 3
                 wins: 0,
                 phase: GamePhase::Shop,
-                next_card_id: 1,
+                next_card_id: 1000, // Reserve 1-999 for templates
                 game_seed: seed,
             });
-
-            // Populate bag from card pool
-            for &id in state.card_pool.keys() {
-                state.local_state.bag.push(id);
-            }
 
             // Draw initial hand from bag
             state.draw_hand();
