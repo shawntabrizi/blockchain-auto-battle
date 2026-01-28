@@ -48,9 +48,10 @@ impl GameEngine {
     pub fn new(seed: Option<u64>) -> Self {
         log::info("=== MANALIMIT ENGINE INITIALIZED ===");
         let seed_val = seed.unwrap_or(42);
+        let state = GameState::new(seed_val);
         let mut engine = Self {
-            state: GameState::new(seed_val),
-            set_id: 0,
+            set_id: state.set_id,
+            state,
             last_battle_output: None,
             current_mana: 0,
             hand_used: Vec::new(),
@@ -122,7 +123,7 @@ impl GameEngine {
     /// Pitch a card from the hand to generate mana
     #[wasm_bindgen]
     pub fn pitch_hand_card(&mut self, hand_index: usize) -> Result<(), String> {
-        log::action("pitch_hand_card", &format!("hand_index={}", hand_index));
+        log::action("pitch_hand_card", &format!("hand_index={}, hand_used_len={}", hand_index, self.hand_used.len()));
         if self.state.phase != GamePhase::Shop {
             return Err("Can only pitch during shop phase".to_string());
         }
@@ -133,7 +134,7 @@ impl GameEngine {
             .get(hand_index)
             .ok_or("Invalid hand index")?;
 
-        if self.hand_used[hand_index] {
+        if hand_index < self.hand_used.len() && self.hand_used[hand_index] {
             return Err("Card already used this turn".to_string());
         }
 
@@ -369,7 +370,8 @@ impl GameEngine {
         let mut state: GameState = serde_json::from_str(&json)
             .map_err(|e| format!("Failed to parse JSON state: {:?}", e))?;
 
-        state.game_seed = seed;
+        state.local_state.game_seed = seed;
+        self.set_id = state.set_id;
         self.state = state;
         self.start_planning_phase();
         Ok(())

@@ -173,12 +173,14 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
             // 2. Reconstruct full GameState for WASM
             const fullState = {
               card_pool: cleanCardPool,
+              set_id: game.set_id, // Explicitly include set_id from the session
               ...cleanState
             };
 
             // Debug: Log key fields after conversion
             console.log("Full state after conversion:", {
               phase: fullState.phase,
+              set_id: fullState.set_id,
               game_seed: fullState.game_seed,
               next_card_id: fullState.next_card_id,
               board: fullState.board,

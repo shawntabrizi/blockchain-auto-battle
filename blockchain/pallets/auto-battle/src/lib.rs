@@ -181,7 +181,7 @@ pub mod pallet {
             let seed = Self::generate_next_seed(&who, b"start_game");
 
             // Create initial state
-            let mut state = GameState::reconstruct(card_set.card_pool, manalimit_core::state::LocalGameState {
+            let mut state = GameState::reconstruct(card_set.card_pool, set_id, manalimit_core::state::LocalGameState {
                 bag: create_genesis_bag(set_id, seed),
                 hand: Vec::new(),
                 board: vec![None; 5], // BOARD_SIZE is 5
@@ -197,7 +197,7 @@ pub mod pallet {
             // Draw initial hand from bag
             state.draw_hand();
 
-            let (_, local_state) = state.decompose();
+            let (_, _, local_state) = state.decompose();
 
             let session = GameSession {
                 state: local_state.into(),
@@ -234,7 +234,7 @@ pub mod pallet {
             // Reconstruct full core state
             let card_set_bounded = CardSets::<T>::get(session.set_id).ok_or(Error::<T>::CardSetNotFound)?;
             let card_set: CardSet = card_set_bounded.into();
-            let mut core_state = GameState::reconstruct(card_set.card_pool, session.state.clone().into());
+            let mut core_state = GameState::reconstruct(card_set.card_pool, session.set_id, session.state.clone().into());
             
             let core_action: CommitTurnAction = action.into();
 
@@ -324,7 +324,7 @@ pub mod pallet {
             // Reconstruct core state to use its methods (draw_hand, calculate_mana_limit)
             let card_set_bounded = CardSets::<T>::get(session.set_id).ok_or(Error::<T>::CardSetNotFound)?;
             let card_set: CardSet = card_set_bounded.into();
-            let mut core_state = GameState::reconstruct(card_set.card_pool, session.state.clone().into());
+            let mut core_state = GameState::reconstruct(card_set.card_pool, session.set_id, session.state.clone().into());
 
             core_state.local_state.game_seed = new_seed;
 

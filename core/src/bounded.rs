@@ -748,6 +748,7 @@ where
     MaxHandActions: Get<u32>,
 {
     pub card_pool: BoundedBTreeMap<CardId, BoundedUnitCard<MaxAbilities, MaxStringLen>, MaxBagSize>,
+    pub set_id: u32,
     pub local_state: BoundedLocalGameState<MaxBagSize, MaxBoardSize, MaxHandActions>,
 }
 
@@ -763,6 +764,7 @@ impl<
     fn clone(&self) -> Self {
         Self {
             card_pool: self.card_pool.clone(),
+            set_id: self.set_id,
             local_state: self.local_state.clone(),
         }
     }
@@ -778,7 +780,7 @@ impl<
     for BoundedGameState<MaxBagSize, MaxBoardSize, MaxAbilities, MaxStringLen, MaxHandActions>
 {
     fn eq(&self, other: &Self) -> bool {
-        self.card_pool == other.card_pool && self.local_state == other.local_state
+        self.card_pool == other.card_pool && self.set_id == other.set_id && self.local_state == other.local_state
     }
 }
 
@@ -805,6 +807,7 @@ impl<
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("BoundedGameState")
             .field("card_pool", &self.card_pool)
+            .field("set_id", &self.set_id)
             .field("local_state", &self.local_state)
             .finish()
     }
@@ -820,7 +823,7 @@ where
     MaxHandActions: Get<u32>,
 {
     fn from(state: GameState) -> Self {
-        let (card_pool_raw, local_state_raw) = state.decompose();
+        let (card_pool_raw, set_id, local_state_raw) = state.decompose();
 
         let mut card_pool = BoundedBTreeMap::new();
         for (id, card) in card_pool_raw {
@@ -829,6 +832,7 @@ where
 
         Self {
             card_pool,
+            set_id,
             local_state: local_state_raw.into(),
         }
     }
@@ -860,7 +864,7 @@ where
             .collect();
         let local_state = bounded.local_state.into();
 
-        Self::reconstruct(card_pool, local_state)
+        Self::reconstruct(card_pool, bounded.set_id, local_state)
     }
 }
 

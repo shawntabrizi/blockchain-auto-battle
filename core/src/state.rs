@@ -76,6 +76,8 @@ pub struct LocalGameState {
 pub struct GameState {
     /// Global pool of all card instances
     pub card_pool: BTreeMap<CardId, UnitCard>,
+    /// Set ID used for this game
+    pub set_id: u32,
     /// Local game state
     #[cfg_attr(feature = "std", serde(flatten))]
     pub local_state: LocalGameState,
@@ -98,6 +100,7 @@ impl GameState {
     pub fn new(game_seed: u64) -> Self {
         Self {
             card_pool: BTreeMap::new(),
+            set_id: 0,
             local_state: LocalGameState {
                 bag: Vec::new(),
                 hand: Vec::new(),
@@ -114,16 +117,21 @@ impl GameState {
     }
 
     /// Construct a full GameState from card_pool and local_state
-    pub fn reconstruct(card_pool: BTreeMap<CardId, UnitCard>, local_state: LocalGameState) -> Self {
+    pub fn reconstruct(
+        card_pool: BTreeMap<CardId, UnitCard>,
+        set_id: u32,
+        local_state: LocalGameState,
+    ) -> Self {
         Self {
             card_pool,
+            set_id,
             local_state,
         }
     }
 
     /// Decompose GameState into card_pool and local_state
-    pub fn decompose(self) -> (BTreeMap<CardId, UnitCard>, LocalGameState) {
-        (self.card_pool, self.local_state)
+    pub fn decompose(self) -> (BTreeMap<CardId, UnitCard>, u32, LocalGameState) {
+        (self.card_pool, self.set_id, self.local_state)
     }
 
     /// Populate the hand by drawing from the bag.
