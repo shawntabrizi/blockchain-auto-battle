@@ -22,6 +22,7 @@ interface BlockchainStore {
   selectedAccount: any | null;
   isConnected: boolean;
   isConnecting: boolean;
+  isRefreshing: boolean; // Add this
   chainState: any | null;
   blockNumber: number | null;
 
@@ -31,6 +32,28 @@ interface BlockchainStore {
   refreshGameState: () => Promise<void>;
   submitTurnOnChain: () => Promise<void>;
 }
+
+// Utility to deeply clone an object and remove any non-plain object/array/primitive types.
+// This is critical for SES/Lockdown environments where WASM-linked objects can cause aliasing errors.
+const safeClone = (val: any): any => {
+  if (val === null || val === undefined) return val;
+  if (typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean' || typeof val === 'bigint') {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val.map(safeClone);
+  }
+  if (typeof val === 'object') {
+    const res: any = {};
+    for (const key in val) {
+      if (Object.prototype.hasOwnProperty.call(val, key)) {
+        res[key] = safeClone(val[key]);
+      }
+    }
+    return res;
+  }
+  return val;
+};
 
 const DEV_ACCOUNTS = ["Alice", "Bob", "Charlie", "Dave", "Eve", "Ferdie"];
 
@@ -64,6 +87,7 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
   selectedAccount: null,
   isConnected: false,
   isConnecting: false,
+  isRefreshing: false,
   chainState: null,
   blockNumber: null,
 
@@ -127,9 +151,10 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
   },
 
   refreshGameState: async () => {
-    const { api, selectedAccount } = get();
-    if (!api || !selectedAccount) return;
+    const { api, selectedAccount, isRefreshing } = get();
+    if (!api || !selectedAccount || isRefreshing) return;
 
+    set({ isRefreshing: true });
     try {
       console.log(`Refreshing game state for ${selectedAccount.address}...`);
       const game = await api.query.AutoBattle.ActiveGame.getValue(selectedAccount.address);
@@ -141,8 +166,11 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
         if (engine) {
           console.log("On-chain game found. Syncing WASM engine...", game.state);
           try {
-            // Convert PAPI types to WASM-friendly format
-            const stateObj = chainStateToWasm(game.state);
+            // 1. Convert PAPI types to WASM-friendly format (strings, objects)
+            const cleaned = chainStateToWasm(game.state);
+            // 2. Deep clone to plain objects to satisfy SES/Lockdown and prevent aliasing errors
+            const stateObj = safeClone(cleaned);
+            
             console.log("Cleaned state for WASM:", stateObj);
             
             engine.set_state(stateObj);
@@ -162,6 +190,8 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
       }
     } catch (err) {
       console.error("Failed to fetch game state:", err);
+    } finally {
+      set({ isRefreshing: false });
     }
   },
 
