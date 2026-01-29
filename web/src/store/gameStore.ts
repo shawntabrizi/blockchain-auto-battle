@@ -69,13 +69,14 @@ interface GameStore {
 }
 
 let wasmInitialized = false;
+let initPromise: Promise<void> | null = null;
 
 export const useGameStore = create<GameStore>((set, get) => ({
   engine: null,
   view: null,
   battleOutput: null,
   cardSet: null,
-  bag: null, 
+  bag: null,
   isLoading: true,
   error: null,
   selection: null,
@@ -84,25 +85,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showBag: false,
 
   init: async () => {
+    // If engine already exists, nothing to do
     if (get().engine) return;
-    try {
-      set({ isLoading: true, error: null });
-      const wasm = (await import('manalimit-client')) as unknown as WasmModule;
-      if (!wasmInitialized) {
-        await wasm.default();
-        wasmInitialized = true;
+    // If init is already in progress, return the existing promise to avoid race
+    if (initPromise) return initPromise;
+
+    initPromise = (async () => {
+      try {
+        set({ isLoading: true, error: null });
+        const wasm = (await import('manalimit-client')) as unknown as WasmModule;
+        if (!wasmInitialized) {
+          await wasm.default();
+          wasmInitialized = true;
+        }
+        const engine = new wasm.GameEngine();
+        set({
+          engine,
+          view: engine.get_view(),
+          cardSet: engine.get_card_set(), // Fetch card set once on init
+          isLoading: false
+        });
+      } catch (err) {
+        console.error('Failed to initialize WASM:', err);
+        set({ error: String(err), isLoading: false });
+      } finally {
+        initPromise = null;
       }
-      const engine = new wasm.GameEngine();
-      set({ 
-        engine, 
-        view: engine.get_view(), 
-        cardSet: engine.get_card_set(), // Fetch card set once on init
-        isLoading: false 
-      });
-    } catch (err) {
-      console.error('Failed to initialize WASM:', err);
-      set({ error: String(err), isLoading: false });
-    }
+    })();
+
+    return initPromise;
   },
 
   pitchHandCard: (index: number) => {

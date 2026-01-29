@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useBlockchainStore } from '../store/blockchainStore';
 import { useGameStore } from '../store/gameStore';
 import { Arena } from './Arena';
@@ -40,15 +40,22 @@ export const BlockchainPage: React.FC = () => {
 
   const [txLoading, setTxLoading] = useState(false);
 
+  // Guards to prevent double-execution in React StrictMode
+  const initCalled = useRef(false);
+  const refreshCalled = useRef(false);
+
   useEffect(() => {
+    if (initCalled.current) return;
+    initCalled.current = true;
     init();
   }, [init]);
 
   // Sync chain state whenever engine or account changes
   useEffect(() => {
-    if (engine && isConnected && selectedAccount) {
-      refreshGameState();
-    }
+    if (!engine || !isConnected || !selectedAccount) return;
+    if (refreshCalled.current) return;
+    refreshCalled.current = true;
+    refreshGameState();
   }, [engine, isConnected, selectedAccount, refreshGameState]);
 
   const handleStartGame = async () => {
