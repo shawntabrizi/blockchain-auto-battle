@@ -24,11 +24,12 @@ interface BlockchainStore {
   isRefreshing: boolean;
   chainState: any | null;
   blockNumber: number | null;
+  lastRefresh: number;
 
   connect: () => Promise<void>;
   selectAccount: (account: any) => Promise<void>;
   startGame: () => Promise<void>;
-  refreshGameState: () => Promise<void>;
+  refreshGameState: (force?: boolean) => Promise<void>;
   submitTurnOnChain: () => Promise<void>;
   fetchDeck: () => any[];
 }
@@ -68,6 +69,7 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
   isRefreshing: false,
   chainState: null,
   blockNumber: null,
+  lastRefresh: 0,
 
   connect: async () => {
     set({ isConnecting: true });
@@ -135,27 +137,58 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
     await get().refreshGameState();
   },
 
-  refreshGameState: async () => {
-    const { api, client, selectedAccount, isRefreshing } = get();
+  refreshGameState: async (force = false) => {
+    console.log("entering refresh game state");
+    const { api, client, selectedAccount, isRefreshing, lastRefresh } = get();
+    console.log({ api, selectedAccount, isRefreshing })
     if (!api || !selectedAccount || isRefreshing) return;
+    console.log("entering refresh game state: past initial check");
 
-    set({ isRefreshing: true });
+    // Throttle refreshes unless forced (e.g. 500ms cooldown)
+    const now = Date.now();
+    if (!force && now - lastRefresh < 500) {
+      console.log("Refresh throttled...");
+      return;
+    }
+
+    set({ isRefreshing: true, lastRefresh: now });
+
+    // Internal helper to wait for engine to be ready
+    const waitForEngine = async (maxRetries = 10): Promise<any> => {
+      for (let i = 0; i < maxRetries; i++) {
+        const { engine } = useGameStore.getState();
+        if (engine) {
+          try {
+            // Heartbeat check
+            engine.is_ready();
+            return engine;
+          } catch (e) {
+            console.warn(`Engine instance exists but is not ready yet (attempt ${i + 1}/10)...`);
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return null;
+    };
+
     try {
       console.log(`Refreshing game state for ${selectedAccount.address}...`);
       const game = await api.query.AutoBattle.ActiveGame.getValue(selectedAccount.address);
       set({ chainState: game });
 
       if (game) {
-        // Sync local WASM engine with chain state using Raw SCALE Bytes
-        const { engine } = useGameStore.getState();
+        // Sync local WASM engine with chain state
+        const engine = await waitForEngine();
+
         if (engine) {
           console.log("On-chain game found. Syncing WASM engine via SCALE bytes...");
           try {
-            // 1. Fetch raw SCALE bytes from the blockchain using storage keys
+            // 1. Fetch raw SCALE bytes from the blockchain
             const gameKey = await api.query.AutoBattle.ActiveGame.getKey(selectedAccount.address);
             const cardSetKey = await api.query.AutoBattle.CardSets.getKey(game.set_id);
 
-            // Use low-level request to get raw storage values as hex strings
+            console.log("storage keys", { gameKey, cardSetKey });
+
             const gameRawHex = await client.rawQuery(gameKey);
             const cardSetRawHex = await client.rawQuery(cardSetKey);
 
@@ -163,16 +196,25 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
               throw new Error("Failed to fetch raw SCALE bytes from chain");
             }
 
-            // Convert hex strings to Uint8Array for WASM
             const gameRaw = Binary.fromHex(gameRawHex).asBytes();
             const cardSetRaw = Binary.fromHex(cardSetRawHex).asBytes();
 
             // 2. Send to WASM via SCALE bridge
+            // Double check readiness right before call
+            let ready = engine.is_ready();
+
+            console.log("engine ready", { ready });
             engine.init_from_scale(gameRaw, cardSetRaw);
+
+            console.log("engine initialized");
+
 
             // 3. Receive view and update store
             const view = engine.get_view();
+            console.log("got view");
+
             const cardSet = engine.get_card_set();
+            console.log("got card set");
 
             console.log("WASM engine synced successfully via SCALE bytes. View:", view);
             useGameStore.setState({ view, cardSet });
@@ -180,7 +222,7 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
             console.error("Failed to sync engine with chain state via SCALE:", e);
           }
         } else {
-          console.warn("WASM engine not ready yet, skipping sync.");
+          console.warn("WASM engine timed out or is not ready, skipping sync.");
         }
       } else {
         console.log("No active game found on-chain for this account.");

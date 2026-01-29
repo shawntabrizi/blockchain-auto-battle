@@ -420,30 +420,79 @@ impl GameEngine {
         log::action(
             "init_from_scale",
             &format!(
-                "Initializing engine from SCALE bytes (session={}, card_set={})",
+                "Initializing engine from SCALE bytes (session_len={}, card_set_len={})",
                 session_scale.len(),
                 card_set_scale.len()
             ),
         );
 
-        let session = WasmGameSession::decode(&mut &session_scale[..])
-            .map_err(|e| format!("Failed to decode WasmGameSession: {:?}", e))?;
+        // Defensive checks for empty input
+        if session_scale.is_empty() {
+            return Err("Empty session data".to_string());
+        }
+        if card_set_scale.is_empty() {
+            return Err("Empty card set data".to_string());
+        }
 
+        // Step-by-step decoding for debugging
+        let mut session_slice = &session_scale[..];
+
+        log::debug("init_from_scale", "Decoding BoundedLocalGameState...");
+        let state_bounded = BoundedLocalGameState::<WasmMaxBagSize, WasmMaxBoardSize, WasmMaxHandActions>::decode(&mut session_slice)
+            .map_err(|e| format!("Failed to decode BoundedLocalGameState: {:?}", e))?;
+
+        log::debug("init_from_scale", "Decoding set_id...");
+        let set_id = u32::decode(&mut session_slice)
+            .map_err(|e| format!("Failed to decode set_id: {:?}", e))?;
+
+        log::debug("init_from_scale", "Decoding current_seed...");
+        let current_seed = u64::decode(&mut session_slice)
+            .map_err(|e| format!("Failed to decode current_seed: {:?}", e))?;
+
+        log::debug("init_from_scale", "Decoding owner...");
+        let _owner = <[u8; 32]>::decode(&mut session_slice)
+            .map_err(|e| format!("Failed to decode owner: {:?}", e))?;
+
+        // Check for trailing bytes
+        if !session_slice.is_empty() {
+            log::debug("init_from_scale", &format!("Warning: {} bytes remaining in session_scale after decode", session_slice.len()));
+        }
+
+        log::debug("init_from_scale", "Decoding BoundedCardSet...");
         let card_set_bounded = BoundedCardSet::<WasmMaxBagSize, WasmMaxAbilities, WasmMaxStringLen>::decode(&mut &card_set_scale[..])
             .map_err(|e| format!("Failed to decode BoundedCardSet: {:?}", e))?;
 
+        log::debug("init_from_scale", "Converting bounded types to core types...");
         let card_set: manalimit_core::state::CardSet = card_set_bounded.into();
-        let local_state: manalimit_core::state::LocalGameState = session.state.into();
+        let local_state: manalimit_core::state::LocalGameState = state_bounded.into();
 
-        let mut state = GameState::reconstruct(card_set.card_pool, session.set_id, local_state);
-        
+        log::debug("init_from_scale", "Reconstructing GameState...");
+        let mut state = GameState::reconstruct(card_set.card_pool, set_id, local_state);
+
+        log::debug("init_from_scale", "Reconstructing done...");
         // Ensure the current_seed from session is applied to local_state
-        state.local_state.game_seed = session.current_seed;
+        state.local_state.game_seed = current_seed;
+
+        log::debug("init_from_scale", "current seed assigned...");
 
         self.state = state;
+        log::debug("init_from_scale", "state assigned...");
+
         self.set_id = self.state.set_id;
+        log::debug("init_from_scale", "set_id assigned...");
+
+
+        log::debug("init_from_scale", "starting planning phase...");
         self.start_planning_phase();
+
+        log::info("init_from_scale completed successfully");
         Ok(())
+    }
+
+    /// Check if the engine is ready (heartbeat)
+    #[wasm_bindgen]
+    pub fn is_ready(&self) -> bool {
+        true
     }
 }
 
@@ -456,7 +505,7 @@ impl GameEngine {
     fn initialize_bag(&mut self) {
         self.state.local_state.bag.clear();
         self.state.card_pool.clear();
-        
+
         // Use get_card_set to populate pool
         use manalimit_core::units::{get_card_set, create_genesis_bag};
         if let Some(card_set) = get_card_set(self.set_id) {
@@ -465,9 +514,9 @@ impl GameEngine {
 
         // Generate random bag of 100 cards from the set
         self.state.local_state.bag = create_genesis_bag(self.set_id, self.state.game_seed);
-        
+
         // Set next_card_id to be after templates
-        self.state.local_state.next_card_id = 1000; 
+        self.state.local_state.next_card_id = 1000;
 
         // Draw initial hand once bag is ready
         self.state.draw_hand();
