@@ -138,6 +138,24 @@ impl GameEngine {
         }
     }
 
+    /// Get the full bag as JsValue (Cold Path - on demand only)
+    #[wasm_bindgen]
+    pub fn get_full_bag(&self) -> JsValue {
+        let bag_views: Vec<CardView> = self
+            .state
+            .bag
+            .iter()
+            .map(|id| CardView::from(self.get_card(*id)))
+            .collect();
+        match serde_wasm_bindgen::to_value(&bag_views) {
+            Ok(val) => val,
+            Err(e) => {
+                log::error(&format!("get_full_bag serialization failed: {:?}", e));
+                JsValue::NULL
+            }
+        }
+    }
+
     /// Pitch a card from the hand to generate mana
     #[wasm_bindgen]
     pub fn pitch_hand_card(&mut self, hand_index: usize) -> Result<(), String> {

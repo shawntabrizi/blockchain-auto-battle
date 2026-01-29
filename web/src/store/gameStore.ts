@@ -20,6 +20,7 @@ interface GameEngine {
   resolve_battle_p2p: (player_board: any, enemy_board: any, seed: bigint) => any;
   apply_battle_result: (result: any) => void;
   get_commit_action: () => any;
+  get_full_bag: () => any;
 
   // Universal Bridge methods
   // Note: seed is bigint because wasm-bindgen binds Rust u64 to JS BigInt
@@ -202,8 +203,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { engine } = get();
     if (!engine) return;
     try {
-      console.warn('fetchBag: JSON string APIs removed, functionality currently disabled');
-      set({ bag: [] });
+      const bag = engine.get_full_bag();
+      set({ bag });
     } catch (err) {
       console.error('Failed to fetch bag:', err);
     }

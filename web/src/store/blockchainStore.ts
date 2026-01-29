@@ -243,12 +243,9 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
     }
 
     try {
-      // In a real app we'd want a non-JSON way if possible, or just keep this as the one exception
-      // for large data. But the user asked to remove JSON string APIs.
-      // If there's no get_full_bag() JsValue version, this might need more work.
-      // For now, let's assume get_view() is the main one and fetchDeck might be broken or needs update.
-      console.warn("fetchDeck: JSON string APIs removed, functionality may be limited");
-      return [];
+      const bag = engine.get_full_bag();
+      console.log("Fetched full deck from WASM:", bag.length, "cards");
+      return bag;
     } catch (e) {
       console.error("Failed to fetch deck:", e);
       return [];
