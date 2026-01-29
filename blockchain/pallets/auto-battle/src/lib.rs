@@ -95,8 +95,8 @@ pub mod pallet {
     >;
 
     /// Type alias for the bounded turn action using pallet config.
-    pub type BoundedCommitTurnAction<T> =
-        CoreBoundedCommitTurnAction<<T as Config>::MaxBoardSize, <T as Config>::MaxHandActions>;
+    /// MaxHandActions is used as the max number of actions in a turn.
+    pub type BoundedCommitTurnAction<T> = CoreBoundedCommitTurnAction<<T as Config>::MaxHandActions>;
 
     /// A game session stored on-chain.
     #[derive(Encode, Decode, TypeInfo, CloneNoBound, PartialEqNoBound)]

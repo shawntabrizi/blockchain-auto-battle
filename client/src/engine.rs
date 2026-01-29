@@ -13,7 +13,8 @@ use manalimit_core::log;
 use manalimit_core::opponents::get_opponent_for_round;
 use manalimit_core::rng::XorShiftRng;
 use manalimit_core::state::*;
-use manalimit_core::types::{BoardUnit, CardId, CommitTurnAction, UnitCard};
+use manalimit_core::types::{BoardUnit, CardId, CommitTurnAction, TurnAction, UnitCard};
+use parity_scale_codec::Encode;
 use manalimit_core::view::{CardView, GameView};
 use manalimit_core::bounded::{BoundedLocalGameState, BoundedCardSet};
 use bounded_collections::ConstU32;
@@ -53,9 +54,7 @@ pub struct GameEngine {
     // Per-turn local tracking (transient, not persisted)
     current_mana: i32,
     hand_used: Vec<bool>,                // true = pitched or played
-    hand_pitched: Vec<bool>,             // true = pitched for mana
-    hand_played: Vec<bool>,              // true = played to board
-    board_pitched: Vec<usize>,           // board slots that were pitched
+    action_log: Vec<TurnAction>,         // Ordered list of actions taken this turn
     start_board: Vec<Option<BoardUnit>>, // board state at the start of the turn
 }
 
@@ -73,9 +72,7 @@ impl GameEngine {
             last_battle_output: None,
             current_mana: 0,
             hand_used: Vec::new(),
-            hand_pitched: Vec::new(),
-            hand_played: Vec::new(),
-            board_pitched: Vec::new(),
+            action_log: Vec::new(),
             start_board: vec![None; BOARD_SIZE],
         };
         engine.initialize_bag();
@@ -92,13 +89,12 @@ impl GameEngine {
             .expect("Card not found in pool")
     }
 
-    /// Submit a turn action from JavaScript
+    /// Submit a turn action from JavaScript (JSON format)
     #[wasm_bindgen]
     pub fn submit_turn(&mut self, action_js: JsValue) -> Result<(), String> {
         log::action("submit_turn", "Applying turn action from JS");
-        let action: manalimit_core::types::CommitTurnAction =
-            serde_wasm_bindgen::from_value(action_js)
-                .map_err(|e| format!("Failed to parse action: {:?}", e))?;
+        let action: CommitTurnAction = serde_wasm_bindgen::from_value(action_js)
+            .map_err(|e| format!("Failed to parse action: {:?}", e))?;
 
         // We must rollback board to start_board because verify_and_apply_turn expects
         // state as it was at the beginning of the turn.
@@ -112,6 +108,24 @@ impl GameEngine {
         self.run_battle();
         self.log_state();
         Ok(())
+    }
+
+    /// Get the current commit action as SCALE-encoded bytes for on-chain submission
+    #[wasm_bindgen]
+    pub fn get_commit_action_scale(&self) -> Vec<u8> {
+        let action = CommitTurnAction {
+            actions: self.action_log.clone(),
+        };
+        action.encode()
+    }
+
+    /// Get the current commit action as JSON (for debugging/display)
+    #[wasm_bindgen]
+    pub fn get_commit_action(&self) -> JsValue {
+        let action = CommitTurnAction {
+            actions: self.action_log.clone(),
+        };
+        serde_wasm_bindgen::to_value(&action).unwrap_or(JsValue::NULL)
     }
 
     /// Get the current game view as JSON
@@ -190,7 +204,9 @@ impl GameEngine {
 
         self.current_mana = (self.current_mana + pitch_value).min(self.state.mana_limit);
         self.hand_used[hand_index] = true;
-        self.hand_pitched[hand_index] = true;
+        self.action_log.push(TurnAction::PitchFromHand {
+            hand_index: hand_index as u32,
+        });
 
         self.log_state();
         Ok(())
@@ -239,7 +255,10 @@ impl GameEngine {
 
         self.current_mana -= play_cost;
         self.hand_used[hand_index] = true;
-        self.hand_played[hand_index] = true;
+        self.action_log.push(TurnAction::PlayFromHand {
+            hand_index: hand_index as u32,
+            board_slot: board_slot as u32,
+        });
 
         // Place the card on the board
         self.state.board[board_slot] = Some(BoardUnit::new(card_id, health));
@@ -270,6 +289,10 @@ impl GameEngine {
         }
 
         self.state.board.swap(slot_a, slot_b);
+        self.action_log.push(TurnAction::SwapBoard {
+            slot_a: slot_a as u32,
+            slot_b: slot_b as u32,
+        });
         Ok(())
     }
 
@@ -291,7 +314,9 @@ impl GameEngine {
         let card_id = unit.card_id;
         let pitch_value = self.get_card(card_id).economy.pitch_value;
         self.current_mana = (self.current_mana + pitch_value).min(self.state.mana_limit);
-        self.board_pitched.push(board_slot);
+        self.action_log.push(TurnAction::PitchFromBoard {
+            board_slot: board_slot as u32,
+        });
 
         self.log_state();
         Ok(())
@@ -305,24 +330,9 @@ impl GameEngine {
             return Err("Can only end turn during shop phase".to_string());
         }
 
-        // Build CommitTurnAction from local tracking
-        let action = manalimit_core::types::CommitTurnAction {
-            new_board: self.state.board.clone(),
-            pitched_from_hand: self
-                .hand_pitched
-                .iter()
-                .enumerate()
-                .filter(|(_, &p)| p)
-                .map(|(i, _)| i as u32)
-                .collect(),
-            played_from_hand: self
-                .hand_played
-                .iter()
-                .enumerate()
-                .filter(|(_, &p)| p)
-                .map(|(i, _)| i as u32)
-                .collect(),
-            pitched_from_board: self.board_pitched.iter().map(|&i| i as u32).collect(),
+        // Build CommitTurnAction from the action log
+        let action = CommitTurnAction {
+            actions: self.action_log.clone(),
         };
 
         // We must rollback board to start_board because verify_and_apply_turn expects
@@ -471,9 +481,7 @@ impl GameEngine {
 
         let hand_size = self.state.hand.len();
         self.hand_used = vec![false; hand_size];
-        self.hand_pitched = vec![false; hand_size];
-        self.hand_played = vec![false; hand_size];
-        self.board_pitched = Vec::new();
+        self.action_log = Vec::new();
         self.start_board = self.state.board.clone();
         self.current_mana = 0;
     }

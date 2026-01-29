@@ -1,6 +1,6 @@
 use crate::{mock::*, ActiveGame, Error};
 use frame::testing_prelude::*;
-use manalimit_core::{BattleResult, GamePhase};
+use manalimit_core::{BattleResult, GamePhase, CommitTurnAction};
 
 #[test]
 fn test_start_game() {
@@ -32,12 +32,9 @@ fn test_submit_shop_phase_empty() {
         let account_id = 1;
         assert_ok!(AutoBattle::start_game(RuntimeOrigin::signed(account_id), 0));
 
-        // Create an empty turn action
-        let action = manalimit_core::CommitTurnAction {
-            new_board: vec![None, None, None, None, None],
-            pitched_from_hand: vec![],
-            played_from_hand: vec![],
-            pitched_from_board: vec![],
+        // Create an empty turn action (no actions taken)
+        let action = CommitTurnAction {
+            actions: vec![],
         };
 
         let bounded_action = action.into();
@@ -59,11 +56,8 @@ fn test_report_battle_outcome_victory() {
         assert_ok!(AutoBattle::start_game(RuntimeOrigin::signed(account_id), 0));
 
         // Must submit shop phase first to get into Battle phase
-        let action = manalimit_core::CommitTurnAction {
-            new_board: vec![None, None, None, None, None],
-            pitched_from_hand: vec![],
-            played_from_hand: vec![],
-            pitched_from_board: vec![],
+        let action = CommitTurnAction {
+            actions: vec![],
         };
         assert_ok!(AutoBattle::submit_shop_phase(
             RuntimeOrigin::signed(account_id),
@@ -94,11 +88,8 @@ fn test_report_battle_outcome_defeat() {
         assert_eq!(initial_lives, 3);
 
         // Must submit shop phase first
-        let action = manalimit_core::CommitTurnAction {
-            new_board: vec![None, None, None, None, None],
-            pitched_from_hand: vec![],
-            played_from_hand: vec![],
-            pitched_from_board: vec![],
+        let action = CommitTurnAction {
+            actions: vec![],
         };
         assert_ok!(AutoBattle::submit_shop_phase(
             RuntimeOrigin::signed(account_id),
@@ -129,11 +120,8 @@ fn test_game_over_defeat() {
         });
 
         // Submit shop phase
-        let action = manalimit_core::CommitTurnAction {
-            new_board: vec![None, None, None, None, None],
-            pitched_from_hand: vec![],
-            played_from_hand: vec![],
-            pitched_from_board: vec![],
+        let action = CommitTurnAction {
+            actions: vec![],
         };
         assert_ok!(AutoBattle::submit_shop_phase(
             RuntimeOrigin::signed(account_id),
@@ -167,11 +155,8 @@ fn test_phase_enforcement() {
         );
 
         // 2. Transition to Battle phase
-        let action = manalimit_core::CommitTurnAction {
-            new_board: vec![None, None, None, None, None],
-            pitched_from_hand: vec![],
-            played_from_hand: vec![],
-            pitched_from_board: vec![],
+        let action = CommitTurnAction {
+            actions: vec![],
         };
         assert_ok!(AutoBattle::submit_shop_phase(
             RuntimeOrigin::signed(account_id),
@@ -179,11 +164,8 @@ fn test_phase_enforcement() {
         ));
 
         // 3. Try to submit shop phase again during Battle phase
-        let action2 = manalimit_core::CommitTurnAction {
-            new_board: vec![None, None, None, None, None],
-            pitched_from_hand: vec![],
-            played_from_hand: vec![],
-            pitched_from_board: vec![],
+        let action2 = CommitTurnAction {
+            actions: vec![],
         };
         assert_noop!(
             AutoBattle::submit_shop_phase(RuntimeOrigin::signed(account_id), action2.into()),

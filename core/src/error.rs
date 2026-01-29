@@ -18,8 +18,10 @@ pub enum GameError {
     NotEnoughMana { have: i32, need: i32 },
     /// Board is full, cannot place more units
     BoardFull,
-    /// Invalid board slot index
-    InvalidBoardSlot { index: u8 },
+    /// Invalid board slot index (out of bounds)
+    InvalidBoardSlot { index: u32 },
+    /// Board slot is already occupied
+    BoardSlotOccupied { index: u32 },
     /// Attempted to interact with empty slot
     EmptySlot,
     /// Action not allowed in current phase

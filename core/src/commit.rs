@@ -9,201 +9,152 @@ use alloc::vec::Vec;
 
 use crate::error::{GameError, GameResult};
 use crate::state::{GameState, BOARD_SIZE};
-use crate::types::{CardId, CommitTurnAction};
+use crate::types::{CommitTurnAction, TurnAction};
 
 /// Verify and apply a committed turn action to the game state.
 ///
-/// This function:
-/// 1. Re-derives the hand from (game_seed, round) -- fully deterministic
-/// 2. Validates all indices (no out-of-bounds, no double-use)
-/// 3. Mana check: pitched values >= played costs, capped by mana_limit
-/// 4. Board check: every unit in new_board came from old board or played hand cards
-/// 5. Apply: update board, remove played+pitched cards from bag
+/// This function executes actions sequentially in order:
+/// 1. Validates each action as it's processed
+/// 2. Tracks mana changes (earned from pitches, spent on plays)
+/// 3. Ensures mana never goes negative and respects mana_limit
+/// 4. Updates board state as actions are applied
+/// 5. Removes used hand cards at the end
 pub fn verify_and_apply_turn(state: &mut GameState, action: &CommitTurnAction) -> GameResult<()> {
-    // 1. Get current hand size
     let hand_size = state.hand.len();
 
-    // 2. Validate new_board size
-    if action.new_board.len() != BOARD_SIZE {
-        return Err(GameError::WrongBoardSize);
-    }
-
-    // Track which hand indices have been used (pitched or played)
+    // Track mana and used cards
+    let mut current_mana: i32 = 0;
     let mut hand_used = vec![false; hand_size];
 
-    // Validate pitched_from_hand indices
-    for &hi_u32 in &action.pitched_from_hand {
-        let hi = hi_u32 as usize;
-        if hi >= hand_size {
-            return Err(GameError::InvalidHandIndex { index: hi_u32 });
+    // Process each action in order
+    for turn_action in &action.actions {
+        match turn_action {
+            TurnAction::PitchFromHand { hand_index } => {
+                let hi = *hand_index as usize;
+
+                // Validate index
+                if hi >= hand_size {
+                    return Err(GameError::InvalidHandIndex { index: *hand_index });
+                }
+
+                // Check not already used
+                if hand_used[hi] {
+                    return Err(GameError::CardAlreadyUsed { index: *hand_index });
+                }
+
+                // Get pitch value and add mana (capped at mana_limit)
+                let card_id = state.hand[hi];
+                let pitch_value = state
+                    .card_pool
+                    .get(&card_id)
+                    .map(|c| c.economy.pitch_value)
+                    .unwrap_or(0);
+
+                current_mana = (current_mana + pitch_value).min(state.mana_limit);
+                hand_used[hi] = true;
+            }
+
+            TurnAction::PlayFromHand { hand_index, board_slot } => {
+                let hi = *hand_index as usize;
+                let bs = *board_slot as usize;
+
+                // Validate hand index
+                if hi >= hand_size {
+                    return Err(GameError::InvalidHandIndex { index: *hand_index });
+                }
+
+                // Check hand card not already used
+                if hand_used[hi] {
+                    return Err(GameError::CardAlreadyUsed { index: *hand_index });
+                }
+
+                // Validate board slot
+                if bs >= BOARD_SIZE {
+                    return Err(GameError::InvalidBoardSlot { index: *board_slot });
+                }
+
+                // Check slot is empty
+                if state.board[bs].is_some() {
+                    return Err(GameError::BoardSlotOccupied { index: *board_slot });
+                }
+
+                // Get card info
+                let card_id = state.hand[hi];
+                let (play_cost, health) = state
+                    .card_pool
+                    .get(&card_id)
+                    .map(|c| (c.economy.play_cost, c.stats.health))
+                    .unwrap_or((0, 0));
+
+                // Check we have enough mana
+                if current_mana < play_cost {
+                    return Err(GameError::NotEnoughMana {
+                        have: current_mana,
+                        need: play_cost,
+                    });
+                }
+
+                // Deduct mana and place unit
+                current_mana -= play_cost;
+                hand_used[hi] = true;
+                state.board[bs] = Some(crate::types::BoardUnit::new(card_id, health));
+            }
+
+            TurnAction::PitchFromBoard { board_slot } => {
+                let bs = *board_slot as usize;
+
+                // Validate board slot
+                if bs >= BOARD_SIZE {
+                    return Err(GameError::InvalidBoardPitch { index: *board_slot });
+                }
+
+                // Check slot has a unit
+                let unit = state.board[bs]
+                    .take()
+                    .ok_or(GameError::InvalidBoardPitch { index: *board_slot })?;
+
+                // Get pitch value and add mana (capped at mana_limit)
+                let pitch_value = state
+                    .card_pool
+                    .get(&unit.card_id)
+                    .map(|c| c.economy.pitch_value)
+                    .unwrap_or(0);
+
+                current_mana = (current_mana + pitch_value).min(state.mana_limit);
+                // Unit is already removed by .take()
+            }
+
+            TurnAction::SwapBoard { slot_a, slot_b } => {
+                let sa = *slot_a as usize;
+                let sb = *slot_b as usize;
+
+                // Validate both slots
+                if sa >= BOARD_SIZE {
+                    return Err(GameError::InvalidBoardSlot { index: *slot_a });
+                }
+                if sb >= BOARD_SIZE {
+                    return Err(GameError::InvalidBoardSlot { index: *slot_b });
+                }
+
+                // Swap positions
+                state.board.swap(sa, sb);
+            }
         }
-        if hand_used[hi] {
-            return Err(GameError::CardAlreadyUsed { index: hi_u32 });
-        }
-        hand_used[hi] = true;
     }
 
-    // Validate played_from_hand indices
-    for &hi_u32 in &action.played_from_hand {
-        let hi = hi_u32 as usize;
-        if hi >= hand_size {
-            return Err(GameError::InvalidHandIndex { index: hi_u32 });
-        }
-        if hand_used[hi] {
-            return Err(GameError::CardAlreadyUsed { index: hi_u32 });
-        }
-        hand_used[hi] = true;
-    }
-
-    // Validate pitched_from_board indices
-    for &bi_u32 in &action.pitched_from_board {
-        let bi = bi_u32 as usize;
-        if bi >= BOARD_SIZE {
-            return Err(GameError::InvalidBoardPitch { index: bi_u32 });
-        }
-        if state.board[bi].is_none() {
-            return Err(GameError::InvalidBoardPitch { index: bi_u32 });
-        }
-    }
-
-    let total_mana_earned_unfiltered: i32 = action
-        .pitched_from_hand
-        .iter()
-        .map(|&hi_u32| {
-            let card_id = state.hand[hi_u32 as usize];
-            state
-                .card_pool
-                .get(&card_id)
-                .map(|c| c.economy.pitch_value)
-                .unwrap_or(0)
-        })
-        .sum::<i32>()
-        + action
-            .pitched_from_board
-            .iter()
-            .map(|&bi_u32| {
-                state.board[bi_u32 as usize]
-                    .as_ref()
-                    .and_then(|u| {
-                        state
-                            .card_pool
-                            .get(&u.card_id)
-                            .map(|c| c.economy.pitch_value)
-                    })
-                    .unwrap_or(0)
-            })
-            .sum::<i32>();
-
-    let total_play_cost: i32 = action
-        .played_from_hand
-        .iter()
-        .map(|&hi_u32| {
-            let card_id = state.hand[hi_u32 as usize];
-            state
-                .card_pool
-                .get(&card_id)
-                .map(|c| c.economy.play_cost)
-                .unwrap_or(0)
-        })
-        .sum();
-
-    // Verification:
-    // 1. Total spent cannot exceed total earned (from all pitches)
-    if total_mana_earned_unfiltered < total_play_cost {
-        return Err(GameError::NotEnoughMana {
-            have: total_mana_earned_unfiltered,
-            need: total_play_cost,
-        });
-    }
-
-    // 2. Each individual card must be affordable (cost <= mana_limit)
-    for &hi_u32 in &action.played_from_hand {
-        let card_id = state.hand[hi_u32 as usize];
-        let cost = state
-            .card_pool
-            .get(&card_id)
-            .map(|c| c.economy.play_cost)
-            .unwrap_or(0);
-        if cost > state.mana_limit {
-            return Err(GameError::NotEnoughMana {
-                have: state.mana_limit,
-                need: cost,
-            });
-        }
-    }
-
-    // 4. Board check
-    let pitched_board_set: Vec<usize> = action
-        .pitched_from_board
-        .iter()
-        .map(|&b| b as usize)
-        .collect();
-
-    let mut available_from_board: Vec<Option<CardId>> = state
-        .board
+    // Remove used hand cards (sort descending to preserve indices)
+    let mut hand_indices_to_remove: Vec<usize> = hand_used
         .iter()
         .enumerate()
-        .map(|(i, slot)| {
-            if pitched_board_set.contains(&i) {
-                None // pitched, not available
-            } else {
-                slot.as_ref().map(|u| u.card_id)
-            }
-        })
+        .filter(|(_, &used)| used)
+        .map(|(i, _)| i)
         .collect();
 
-    let mut available_from_hand: Vec<Option<CardId>> = action
-        .played_from_hand
-        .iter()
-        .map(|&hi_u32| Some(state.hand[hi_u32 as usize]))
-        .collect();
-
-    for slot in &action.new_board {
-        if let Some(unit) = slot {
-            let card_id = unit.card_id;
-
-            // Try to find in old board first
-            let found_board = available_from_board
-                .iter_mut()
-                .find(|x| **x == Some(card_id));
-            if let Some(found) = found_board {
-                *found = None; // consumed
-                continue;
-            }
-
-            // Try to find in played hand cards
-            let found_hand = available_from_hand
-                .iter_mut()
-                .find(|x| **x == Some(card_id));
-            if let Some(found) = found_hand {
-                *found = None; // consumed
-                continue;
-            }
-
-            return Err(GameError::BoardMismatch);
-        }
-    }
-
-    // 5. Apply: remove played and pitched cards from hand
-    let mut hand_indices_to_remove: Vec<usize> = Vec::new();
-
-    for &hi_u32 in &action.pitched_from_hand {
-        hand_indices_to_remove.push(hi_u32 as usize);
-    }
-    for &hi_u32 in &action.played_from_hand {
-        hand_indices_to_remove.push(hi_u32 as usize);
-    }
-
-    hand_indices_to_remove.sort_unstable();
-    hand_indices_to_remove.dedup();
-    hand_indices_to_remove.reverse();
+    hand_indices_to_remove.sort_unstable_by(|a, b| b.cmp(a));
 
     for idx in hand_indices_to_remove {
         state.hand.remove(idx);
     }
-
-    // Apply board state
-    state.board = action.new_board.clone();
 
     Ok(())
 }

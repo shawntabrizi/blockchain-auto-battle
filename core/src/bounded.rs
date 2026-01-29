@@ -17,7 +17,7 @@ use crate::limits::{LimitReason, Team};
 use crate::state::{calculate_mana_limit, derive_hand_indices_logic};
 use crate::types::{
     Ability, AbilityCondition, AbilityEffect, AbilityTarget, AbilityTrigger, BoardUnit, CardId,
-    CommitTurnAction, EconomyStats, UnitCard, UnitStats,
+    CommitTurnAction, EconomyStats, TurnAction, UnitCard, UnitStats,
 };
 use crate::{GamePhase, GameState};
 
@@ -901,100 +901,60 @@ where
 
 // --- Bounded Commit Turn Action ---
 
+/// TurnAction has no unbounded fields, so we can use it directly
+pub type BoundedTurnAction = TurnAction;
+
 #[derive(Encode, Decode, DecodeWithMemTracking, TypeInfo)]
-#[scale_info(skip_type_params(MaxBoardSize, MaxHandActions))]
-pub struct BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>
+#[scale_info(skip_type_params(MaxActions))]
+pub struct BoundedCommitTurnAction<MaxActions>
 where
-    MaxBoardSize: Get<u32>,
-    MaxHandActions: Get<u32>,
+    MaxActions: Get<u32>,
 {
-    pub new_board: BoundedVec<Option<BoundedBoardUnit>, MaxBoardSize>,
-    pub pitched_from_hand: BoundedVec<u32, MaxHandActions>,
-    pub played_from_hand: BoundedVec<u32, MaxHandActions>,
-    pub pitched_from_board: BoundedVec<u32, MaxBoardSize>,
+    pub actions: BoundedVec<BoundedTurnAction, MaxActions>,
 }
 
-impl<MaxBoardSize: Get<u32>, MaxHandActions: Get<u32>> Clone
-    for BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>
-{
+impl<MaxActions: Get<u32>> Clone for BoundedCommitTurnAction<MaxActions> {
     fn clone(&self) -> Self {
         Self {
-            new_board: self.new_board.clone(),
-            pitched_from_hand: self.pitched_from_hand.clone(),
-            played_from_hand: self.played_from_hand.clone(),
-            pitched_from_board: self.pitched_from_board.clone(),
+            actions: self.actions.clone(),
         }
     }
 }
 
-impl<MaxBoardSize: Get<u32>, MaxHandActions: Get<u32>> PartialEq
-    for BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>
-{
+impl<MaxActions: Get<u32>> PartialEq for BoundedCommitTurnAction<MaxActions> {
     fn eq(&self, other: &Self) -> bool {
-        self.new_board == other.new_board
-            && self.pitched_from_hand == other.pitched_from_hand
-            && self.played_from_hand == other.played_from_hand
-            && self.pitched_from_board == other.pitched_from_board
+        self.actions == other.actions
     }
 }
 
-impl<MaxBoardSize: Get<u32>, MaxHandActions: Get<u32>> Eq
-    for BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>
-{
-}
+impl<MaxActions: Get<u32>> Eq for BoundedCommitTurnAction<MaxActions> {}
 
-impl<MaxBoardSize: Get<u32>, MaxHandActions: Get<u32>> Debug
-    for BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>
-{
+impl<MaxActions: Get<u32>> Debug for BoundedCommitTurnAction<MaxActions> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("BoundedCommitTurnAction")
-            .field("new_board", &self.new_board)
-            .field("pitched_from_hand", &self.pitched_from_hand)
-            .field("played_from_hand", &self.played_from_hand)
-            .field("pitched_from_board", &self.pitched_from_board)
+            .field("actions", &self.actions)
             .finish()
     }
 }
 
-impl<MaxBoardSize, MaxHandActions> From<CommitTurnAction>
-    for BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>
+impl<MaxActions> From<CommitTurnAction> for BoundedCommitTurnAction<MaxActions>
 where
-    MaxBoardSize: Get<u32>,
-    MaxHandActions: Get<u32>,
+    MaxActions: Get<u32>,
 {
     fn from(action: CommitTurnAction) -> Self {
         Self {
-            new_board: BoundedVec::truncate_from(
-                action
-                    .new_board
-                    .into_iter()
-                    .map(|opt| opt.map(Into::into))
-                    .collect(),
-            ),
-            pitched_from_hand: BoundedVec::truncate_from(action.pitched_from_hand),
-            played_from_hand: BoundedVec::truncate_from(action.played_from_hand),
-            pitched_from_board: BoundedVec::truncate_from(action.pitched_from_board),
+            actions: BoundedVec::truncate_from(action.actions),
         }
     }
 }
 
-impl<MaxBoardSize, MaxHandActions> From<BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>>
-    for CommitTurnAction
+impl<MaxActions> From<BoundedCommitTurnAction<MaxActions>> for CommitTurnAction
 where
-    MaxBoardSize: Get<u32>,
-    MaxHandActions: Get<u32>,
+    MaxActions: Get<u32>,
 {
-    fn from(bounded: BoundedCommitTurnAction<MaxBoardSize, MaxHandActions>) -> Self {
+    fn from(bounded: BoundedCommitTurnAction<MaxActions>) -> Self {
         Self {
-            new_board: bounded
-                .new_board
-                .into_inner()
-                .into_iter()
-                .map(|opt| opt.map(Into::into))
-                .collect(),
-            pitched_from_hand: bounded.pitched_from_hand.into_inner(),
-            played_from_hand: bounded.played_from_hand.into_inner(),
-            pitched_from_board: bounded.pitched_from_board.into_inner(),
+            actions: bounded.actions.into_inner(),
         }
     }
 }

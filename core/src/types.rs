@@ -302,19 +302,28 @@ impl BoardUnit {
     }
 }
 
-/// A committed turn action submitted by the player
+/// Individual turn actions (executed in order)
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(tag = "type"))]
+pub enum TurnAction {
+    /// Pitch a card from hand for mana
+    PitchFromHand { hand_index: u32 },
+    /// Play a card from hand to a board slot
+    PlayFromHand { hand_index: u32, board_slot: u32 },
+    /// Pitch a unit from the board for mana
+    PitchFromBoard { board_slot: u32 },
+    /// Swap two board positions
+    SwapBoard { slot_a: u32, slot_b: u32 },
+}
+
+/// A committed turn as an ordered list of actions
 ///
-/// Contains the full description of what the player did during their planning phase.
-/// This is verified deterministically by `verify_and_apply_turn`.
+/// Contains the sequence of actions the player performed during their planning phase.
+/// Actions are executed in order by `verify_and_apply_turn`.
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CommitTurnAction {
-    /// Final board state after the turn
-    pub new_board: Vec<Option<BoardUnit>>,
-    /// Hand indices pitched for mana
-    pub pitched_from_hand: Vec<u32>,
-    /// Hand indices played to board
-    pub played_from_hand: Vec<u32>,
-    /// Board slots removed for mana
-    pub pitched_from_board: Vec<u32>,
+    /// Ordered list of actions to execute
+    pub actions: Vec<TurnAction>,
 }

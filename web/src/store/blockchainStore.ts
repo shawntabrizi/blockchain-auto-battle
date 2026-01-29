@@ -13,7 +13,6 @@ import {
 } from "@polkadot-labs/hdkd-helpers"
 import { getPolkadotSigner } from "polkadot-api/signer"
 import { AccountId } from "@polkadot-api/substrate-bindings";
-import { wasmActionToChain } from '../utils/chainConvert';
 
 interface BlockchainStore {
   client: any;
@@ -214,13 +213,13 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
     if (!api || !selectedAccount || !engine) return;
 
     try {
-      // Get commit action from engine
+      // Get commit action from engine (JSON format with the new action list structure)
       const action = engine.get_commit_action();
+      console.log("Submitting turn action:", action);
 
-      // Convert WASM format to PAPI format (e.g. strings to Binary)
-      const chainAction = wasmActionToChain(action);
-      console.log({ action, chainAction });
-      const tx = api.tx.AutoBattle.submit_shop_phase({ action: chainAction });
+      // Submit the action directly - PAPI handles the SCALE encoding
+      // The action is now { actions: TurnAction[] }
+      const tx = api.tx.AutoBattle.submit_shop_phase({ action });
 
       await tx.signAndSubmit(selectedAccount.polkadotSigner);
       await get().refreshGameState();

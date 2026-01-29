@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { toast } from 'react-hot-toast';
-import type { GameView, BattleOutput, Selection } from '../types';
+import type { GameView, BattleOutput, Selection, CardView } from '../types';
 
 interface GameEngine {
-  // Legacy JsValue methods (kept for backward compatibility)
+  // Core methods
   get_view: () => any;
   get_battle_output: () => any;
   pitch_hand_card: (index: number) => void;
@@ -20,6 +20,7 @@ interface GameEngine {
   resolve_battle_p2p: (player_board: any, enemy_board: any, seed: bigint) => any;
   apply_battle_result: (result: any) => void;
   get_commit_action: () => any;
+  get_commit_action_scale: () => Uint8Array;
   get_bag: () => number[];
   get_card_set: () => CardView[];
 
