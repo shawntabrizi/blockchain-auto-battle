@@ -84,7 +84,7 @@ export function Arena() {
 
           return unit ? (
             <UnitCard
-              key={unit.id}
+              key={`board-${unit.id}-${arrayIndex}`}
               card={unit}
               showCost={false}
               showPitch={true}

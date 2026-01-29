@@ -123,7 +123,7 @@ export function Shop() {
               .filter(({ card }) => card) // Only show non-null cards (not yet used)
               .map(({ card, index: i }) => (
                 <UnitCard
-                  key={card!.id}
+                  key={`hand-${card!.id}-${i}`}
                   card={card!}
                   showCost={true}
                   showPitch={true}
