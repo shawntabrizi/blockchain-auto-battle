@@ -30,7 +30,8 @@ pub mod pallet {
     };
     use manalimit_core::{
         verify_and_apply_turn, BattleResult, CardSet, CommitTurnAction,
-        GamePhase, GameState,
+        GamePhase, GameState, CombatUnit, resolve_battle,
+        get_opponent_for_round, XorShiftRng,
         units::{get_card_set, create_genesis_bag},
     };
 
@@ -211,11 +212,11 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Submit actions for the Shop Phase.
-        /// Verifies the moves using the core engine and updates the state.
+        /// Submit a complete turn: apply shop actions, run the battle, and prepare the next round.
+        /// This is the main extrinsic for gameplay - it handles the full turn cycle on-chain.
         #[pallet::call_index(1)]
         #[pallet::weight(Weight::default())]
-        pub fn submit_shop_phase(
+        pub fn submit_turn(
             origin: OriginFor<T>,
             action: BoundedCommitTurnAction<T>,
         ) -> DispatchResult {
@@ -232,30 +233,115 @@ pub mod pallet {
             // Reconstruct full core state
             let card_set_bounded = CardSets::<T>::get(session.set_id).ok_or(Error::<T>::CardSetNotFound)?;
             let card_set: CardSet = card_set_bounded.into();
-            let mut core_state = GameState::reconstruct(card_set.card_pool, session.set_id, session.state.clone().into());
+            let mut core_state = GameState::reconstruct(card_set.card_pool.clone(), session.set_id, session.state.clone().into());
 
             let core_action: CommitTurnAction = action.into();
 
-            // Verify and apply logic
+            // Verify and apply shop phase actions
             verify_and_apply_turn(&mut core_state, &core_action)
                 .map_err(|_| Error::<T>::InvalidTurn)?;
 
-            // Set phase to battle
-            core_state.local_state.phase = GamePhase::Battle;
+            // Generate battle seed
+            let battle_seed = Self::generate_next_seed(&who, b"battle");
 
-            // If success, generate new seed for the battle phase
-            let new_seed = Self::generate_next_seed(&who, b"battle");
+            // Convert player board to CombatUnits
+            let player_units: Vec<CombatUnit> = core_state
+                .local_state
+                .board
+                .iter()
+                .flatten()
+                .filter_map(|board_unit| {
+                    core_state.card_pool.get(&board_unit.card_id).map(|card| {
+                        let mut cu = CombatUnit::from_card(card.clone());
+                        cu.health = board_unit.current_health.max(0);
+                        cu
+                    })
+                })
+                .collect();
+
+            // Generate enemy for this round
+            let enemy_units = get_opponent_for_round(
+                core_state.local_state.round,
+                &mut core_state.local_state.next_card_id,
+                battle_seed.wrapping_add(999),
+            )
+            .map_err(|_| Error::<T>::InvalidTurn)?;
+
+            // Run the battle
+            let mut rng = XorShiftRng::seed_from_u64(battle_seed);
+            let events = resolve_battle(player_units, enemy_units, &mut rng);
+
+            // Extract battle result from the last event
+            let result = events
+                .iter()
+                .rev()
+                .find_map(|e| {
+                    if let manalimit_core::battle::CombatEvent::BattleEnd { result } = e {
+                        Some(result.clone())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(BattleResult::Draw);
+
+            // Apply battle result
+            match result {
+                BattleResult::Victory => {
+                    core_state.local_state.wins += 1;
+                }
+                BattleResult::Defeat => {
+                    core_state.local_state.lives -= 1;
+                }
+                BattleResult::Draw => {}
+            }
+
+            let completed_round = core_state.local_state.round;
+
+            // Check for game over conditions
+            if core_state.local_state.lives <= 0 {
+                // Game over - defeat
+                ActiveGame::<T>::remove(&who);
+                Self::deposit_event(Event::BattleReported {
+                    owner: who,
+                    round: completed_round,
+                    result,
+                    new_seed: 0,
+                });
+                return Ok(());
+            }
+
+            if core_state.local_state.wins >= 10 {
+                // Game over - victory
+                ActiveGame::<T>::remove(&who);
+                Self::deposit_event(Event::BattleReported {
+                    owner: who,
+                    round: completed_round,
+                    result,
+                    new_seed: 0,
+                });
+                return Ok(());
+            }
+
+            // Prepare for next round
+            let new_seed = Self::generate_next_seed(&who, b"shop");
             session.current_seed = new_seed;
             core_state.local_state.game_seed = new_seed;
+            core_state.local_state.round += 1;
+            core_state.local_state.mana_limit = core_state.calculate_mana_limit();
+            core_state.local_state.phase = GamePhase::Shop;
+
+            // Draw new hand for the next shop phase
+            core_state.draw_hand();
 
             // Update session state
             session.state = core_state.local_state.into();
 
             ActiveGame::<T>::insert(&who, &session);
 
-            Self::deposit_event(Event::TurnCommitted {
+            Self::deposit_event(Event::BattleReported {
                 owner: who,
-                round: session.state.round,
+                round: completed_round,
+                result,
                 new_seed,
             });
 

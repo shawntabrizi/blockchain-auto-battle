@@ -272,12 +272,11 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
     try {
       // Get commit action from engine and decode via SCALE
       const actionRaw = engine.get_commit_action_scale();
-      const action = codecs.tx.AutoBattle.submit_shop_phase.dec(actionRaw);
+      const action = codecs.tx.AutoBattle.submit_turn.dec(actionRaw);
       console.log("Submitting turn action:", action);
 
-      // Submit the action directly - PAPI handles the SCALE encoding
-      // The action is now { actions: TurnAction[] }
-      const tx = api.tx.AutoBattle.submit_shop_phase(action);
+      // Submit the turn - this runs shop actions + battle on-chain
+      const tx = api.tx.AutoBattle.submit_turn(action);
 
       await tx.signAndSubmit(selectedAccount.polkadotSigner);
       await get().refreshGameState();
