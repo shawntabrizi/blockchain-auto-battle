@@ -105,7 +105,6 @@ pub mod pallet {
     pub struct GameSession<T: Config> {
         pub state: BoundedLocalGameState<T>,
         pub set_id: u32,
-        pub current_seed: u64,
         pub owner: T::AccountId,
     }
 
@@ -201,7 +200,6 @@ pub mod pallet {
             let session = GameSession {
                 state: local_state.into(),
                 set_id,
-                current_seed: seed,
                 owner: who.clone(),
             };
 
@@ -324,7 +322,6 @@ pub mod pallet {
 
             // Prepare for next round
             let new_seed = Self::generate_next_seed(&who, b"shop");
-            session.current_seed = new_seed;
             core_state.local_state.game_seed = new_seed;
             core_state.local_state.round += 1;
             core_state.local_state.mana_limit = core_state.calculate_mana_limit();
@@ -403,7 +400,6 @@ pub mod pallet {
 
             // Generate new seed for next Shop phase
             let new_seed = Self::generate_next_seed(&who, b"shop");
-            session.current_seed = new_seed;
 
             // Reconstruct core state to use its methods (draw_hand, calculate_mana_limit)
             let card_set_bounded = CardSets::<T>::get(session.set_id).ok_or(Error::<T>::CardSetNotFound)?;

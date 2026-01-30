@@ -27,7 +27,3 @@ getrandom = { workspace = true, features = ["js"] }
 [features]
 default = []
 browser_log = ["manalimit-core/browser_log"]
-
-[profile.release]
-opt-level = "s"
-lto = true

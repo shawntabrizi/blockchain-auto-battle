@@ -153,11 +153,8 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
   },
 
   refreshGameState: async (force = false) => {
-    console.log("entering refresh game state");
     const { api, client, selectedAccount, isRefreshing, lastRefresh } = get();
-    console.log({ api, selectedAccount, isRefreshing })
     if (!api || !selectedAccount || isRefreshing) return;
-    console.log("entering refresh game state: past initial check");
 
     // Throttle refreshes unless forced (e.g. 500ms cooldown)
     const now = Date.now();
@@ -202,8 +199,6 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
             const gameKey = await api.query.AutoBattle.ActiveGame.getKey(selectedAccount.address);
             const cardSetKey = await api.query.AutoBattle.CardSets.getKey(game.set_id);
 
-            console.log("storage keys", { gameKey, cardSetKey });
-
             const gameRawHex = await client.rawQuery(gameKey);
             const cardSetRawHex = await client.rawQuery(cardSetKey);
 
@@ -217,19 +212,11 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
             // 2. Send to WASM via SCALE bridge
             // Double check readiness right before call
             let ready = engine.is_ready();
-
-            console.log("engine ready", { ready });
             engine.init_from_scale(gameRaw, cardSetRaw);
-
-            console.log("engine initialized");
-
 
             // 3. Receive view and update store
             const view = engine.get_view();
-            console.log("got view");
-
             const cardSet = engine.get_card_set();
-            console.log("got card set");
 
             console.log("WASM engine synced successfully via SCALE bytes. View:", view);
             useGameStore.setState({ view, cardSet });

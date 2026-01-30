@@ -447,10 +447,6 @@ impl GameEngine {
         let set_id = u32::decode(&mut session_slice)
             .map_err(|e| format!("Failed to decode set_id: {:?}", e))?;
 
-        log::debug("init_from_scale", "Decoding current_seed...");
-        let current_seed = u64::decode(&mut session_slice)
-            .map_err(|e| format!("Failed to decode current_seed: {:?}", e))?;
-
         log::debug("init_from_scale", "Decoding owner...");
         let _owner = <[u8; 32]>::decode(&mut session_slice)
             .map_err(|e| format!("Failed to decode owner: {:?}", e))?;
@@ -469,13 +465,9 @@ impl GameEngine {
         let local_state: manalimit_core::state::LocalGameState = state_bounded.into();
 
         log::debug("init_from_scale", "Reconstructing GameState...");
-        let mut state = GameState::reconstruct(card_set.card_pool, set_id, local_state);
+        let state = GameState::reconstruct(card_set.card_pool, set_id, local_state);
 
         log::debug("init_from_scale", "Reconstructing done...");
-        // Ensure the current_seed from session is applied to local_state
-        state.local_state.game_seed = current_seed;
-
-        log::debug("init_from_scale", "current seed assigned...");
 
         // Safety: Replace state and let old one drop.
         // If drop crashes, it means the old state (placeholder) was corrupted
