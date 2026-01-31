@@ -97,7 +97,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           await wasm.default();
           wasmInitialized = true;
         }
-        const engine = new wasm.GameEngine();
+        const engine = new wasm.GameEngine(BigInt(Date.now()));
         set({
           engine,
           view: engine.get_view(),

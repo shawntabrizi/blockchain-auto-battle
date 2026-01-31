@@ -56,11 +56,11 @@ impl GameEngine {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: Option<u64>) -> Self {
         log::info("=== MANALIMIT ENGINE INITIALIZED ===");
-        
+
         // If we are about to be initialized via SCALE, we don't want to waste
         // memory/cycles setting up a full game state that will be dropped.
         let state = GameState::empty();
-        
+
         let mut engine = Self {
             set_id: 0,
             state,
@@ -76,6 +76,9 @@ impl GameEngine {
         if let Some(seed_val) = seed {
             log::debug("new", "Seed provided, performing full initialization");
             engine.state.game_seed = seed_val;
+            engine.state.mana_limit = STARTING_MANA_LIMIT;
+            engine.state.round = 1;
+            engine.state.lives = STARTING_LIVES;
             engine.initialize_bag();
             engine.start_planning_phase();
         }
