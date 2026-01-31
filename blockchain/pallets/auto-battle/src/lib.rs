@@ -23,6 +23,7 @@ pub mod pallet {
 
     // Import types from core engine
     use manalimit_core::bounded::{
+        BoundedAbility as CoreBoundedAbility,
         BoundedCardSet as CoreBoundedCardSet,
         BoundedCommitTurnAction as CoreBoundedCommitTurnAction,
         BoundedGameState as CoreBoundedGameState,
@@ -31,6 +32,7 @@ pub mod pallet {
         GhostBoardUnit, MatchmakingBracket,
     };
     use manalimit_core::rng::BattleRng;
+    use manalimit_core::types::{EconomyStats, UnitStats};
     use manalimit_core::{
         verify_and_apply_turn, BattleResult, CardSet, CommitTurnAction,
         GamePhase, GameState, CombatUnit, resolve_battle,
@@ -108,6 +110,72 @@ pub mod pallet {
 
     /// Type alias for bounded ghost board using pallet config.
     pub type BoundedGhostBoard<T> = CoreBoundedGhostBoard<<T as Config>::MaxBoardSize>;
+
+    /// Type alias for bounded ability using pallet config.
+    pub type BoundedAbility<T> = CoreBoundedAbility<<T as Config>::MaxStringLen>;
+
+    /// The core game data of a user-submitted card (used for hashing).
+    /// Does not include metadata like name or emoji - those are stored separately.
+    #[derive(
+        Encode, Decode, DecodeWithMemTracking, TypeInfo,
+        CloneNoBound, PartialEqNoBound, RuntimeDebugNoBound
+    )]
+    #[scale_info(skip_type_params(T))]
+    pub struct UserCardData<T: Config> {
+        /// Combat stats (attack, health)
+        pub stats: UnitStats,
+        /// Economy stats (play_cost, pitch_value)
+        pub economy: EconomyStats,
+        /// Card abilities
+        pub abilities: BoundedVec<BoundedAbility<T>, T::MaxAbilities>,
+        /// Whether this card is a token (spawned, not played from hand)
+        pub is_token: bool,
+    }
+
+    /// A user-submitted card entry stored on-chain.
+    #[derive(
+        Encode, Decode, DecodeWithMemTracking, TypeInfo,
+        CloneNoBound, PartialEqNoBound, RuntimeDebugNoBound
+    )]
+    #[scale_info(skip_type_params(T))]
+    pub struct UserCardEntry<T: Config> {
+        /// The creator who submitted this card
+        pub creator: T::AccountId,
+        /// The core card data
+        pub data: UserCardData<T>,
+        /// Block number when the card was created
+        pub created_at: BlockNumberFor<T>,
+    }
+
+    /// Metadata for a card (name, emoji, etc. - not used in game logic).
+    #[derive(
+        Encode, Decode, DecodeWithMemTracking, TypeInfo,
+        CloneNoBound, PartialEqNoBound, RuntimeDebugNoBound
+    )]
+    #[scale_info(skip_type_params(T))]
+    pub struct CardMetadata<T: Config> {
+        /// Display name of the card
+        pub name: BoundedVec<u8, T::MaxStringLen>,
+        /// Emoji representation (UTF-8 encoded)
+        pub emoji: BoundedVec<u8, T::MaxStringLen>,
+        /// Card description
+        pub description: BoundedVec<u8, T::MaxStringLen>,
+    }
+
+    /// A card metadata entry stored on-chain.
+    #[derive(
+        Encode, Decode, DecodeWithMemTracking, TypeInfo,
+        CloneNoBound, PartialEqNoBound, RuntimeDebugNoBound
+    )]
+    #[scale_info(skip_type_params(T))]
+    pub struct CardMetadataEntry<T: Config> {
+        /// The account who set/updated this metadata
+        pub author: T::AccountId,
+        /// The metadata
+        pub metadata: CardMetadata<T>,
+        /// Block number when the metadata was last updated
+        pub updated_at: BlockNumberFor<T>,
+    }
 
     /// A game session stored on-chain.
     #[derive(Encode, Decode, TypeInfo, CloneNoBound, PartialEqNoBound)]
@@ -189,6 +257,18 @@ pub mod pallet {
     #[pallet::storage]
     pub type NextGhostArchiveId<T: Config> = StorageValue<_, u64, ValueQuery>;
 
+    /// User-submitted cards indexed by their unique hash.
+    /// The hash is derived from the card's game logic data (stats, economy, abilities, is_token).
+    #[pallet::storage]
+    pub type UserCards<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::Hash, UserCardEntry<T>, OptionQuery>;
+
+    /// Card metadata indexed by card hash.
+    /// Metadata is separate from game logic data and can be updated by the creator.
+    #[pallet::storage]
+    pub type CardMetadataStore<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::Hash, CardMetadataEntry<T>, OptionQuery>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -207,6 +287,16 @@ pub mod pallet {
             result: BattleResult,
             new_seed: u64,
         },
+        /// A new user card has been submitted.
+        CardSubmitted {
+            creator: T::AccountId,
+            card_hash: T::Hash,
+        },
+        /// Card metadata has been set or updated.
+        CardMetadataUpdated {
+            author: T::AccountId,
+            card_hash: T::Hash,
+        },
     }
 
     #[pallet::error]
@@ -221,6 +311,12 @@ pub mod pallet {
         WrongPhase,
         /// The specified card set does not exist.
         CardSetNotFound,
+        /// A card with this hash already exists.
+        CardAlreadyExists,
+        /// The specified card does not exist.
+        CardNotFound,
+        /// Only the card creator can perform this action.
+        NotCardCreator,
     }
 
     #[pallet::call]
@@ -517,6 +613,78 @@ pub mod pallet {
                 round: completed_round,
                 result,
                 new_seed,
+            });
+
+            Ok(())
+        }
+
+        /// Submit a new user-created card.
+        /// The card's unique identifier is a hash of its game logic data.
+        /// Metadata (name, emoji, description) should be set separately via `set_card_metadata`.
+        #[pallet::call_index(3)]
+        #[pallet::weight(Weight::default())]
+        pub fn submit_card(
+            origin: OriginFor<T>,
+            card_data: UserCardData<T>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            // Generate unique hash from the card data
+            let card_hash = T::Hashing::hash_of(&card_data);
+
+            // Ensure card doesn't already exist
+            ensure!(
+                !UserCards::<T>::contains_key(&card_hash),
+                Error::<T>::CardAlreadyExists
+            );
+
+            // Create and store the card entry
+            let card_entry = UserCardEntry {
+                creator: who.clone(),
+                data: card_data,
+                created_at: frame_system::Pallet::<T>::block_number(),
+            };
+
+            UserCards::<T>::insert(&card_hash, card_entry);
+
+            Self::deposit_event(Event::CardSubmitted {
+                creator: who,
+                card_hash,
+            });
+
+            Ok(())
+        }
+
+        /// Set or update metadata for a card.
+        /// Only the card creator can update the metadata.
+        #[pallet::call_index(4)]
+        #[pallet::weight(Weight::default())]
+        pub fn set_card_metadata(
+            origin: OriginFor<T>,
+            card_hash: T::Hash,
+            metadata: CardMetadata<T>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            // Ensure the card exists
+            let card_entry = UserCards::<T>::get(&card_hash)
+                .ok_or(Error::<T>::CardNotFound)?;
+
+            // Ensure the caller is the card creator
+            ensure!(card_entry.creator == who, Error::<T>::NotCardCreator);
+
+            // Create and store the metadata entry
+            let metadata_entry = CardMetadataEntry {
+                author: who.clone(),
+                metadata,
+                updated_at: frame_system::Pallet::<T>::block_number(),
+            };
+
+            CardMetadataStore::<T>::insert(&card_hash, metadata_entry);
+
+            Self::deposit_event(Event::CardMetadataUpdated {
+                author: who,
+                card_hash,
             });
 
             Ok(())
