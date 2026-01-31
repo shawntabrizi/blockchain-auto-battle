@@ -1,5 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 import { UnitCard } from './UnitCard';
+import { CardView } from '../types';
 
 export function BagOverlay() {
   const { view, bag, cardSet, showBag, setShowBag, selection, setSelection } = useGameStore();
@@ -7,7 +8,9 @@ export function BagOverlay() {
   if (!showBag || !view) return null;
 
   // Map bag IDs to CardView objects using the cardSet lookup
-  const bagCards = (bag ?? []).map(id => cardSet?.find(c => c.id === id)).filter(Boolean);
+  const bagCards = (bag ?? [])
+    .map(id => cardSet?.find(c => c.id === id))
+    .filter((c): c is CardView => !!c);
 
   return (
     <div className="fixed left-80 right-0 top-16 bottom-48 z-40 bg-black/90 backdrop-blur-md flex flex-col p-8 overflow-hidden animate-in fade-in duration-300">
