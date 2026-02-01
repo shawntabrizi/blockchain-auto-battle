@@ -22,7 +22,9 @@ export const BlockchainPage: React.FC = () => {
     blockNumber,
     startGame,
     refreshGameState,
-    submitTurnOnChain
+    submitTurnOnChain,
+    availableSets,
+    fetchSets
   } = useBlockchainStore();
 
   const {
@@ -39,6 +41,7 @@ export const BlockchainPage: React.FC = () => {
   } = useGameStore();
 
   const [txLoading, setTxLoading] = useState(false);
+  const [selectedSetId, setSelectedSetId] = useState(0);
 
   // Guards to prevent double-execution in React StrictMode
   const initCalled = useRef(false);
@@ -48,7 +51,10 @@ export const BlockchainPage: React.FC = () => {
     if (initCalled.current) return;
     initCalled.current = true;
     init();
-  }, [init]);
+    if (isConnected) {
+      fetchSets();
+    }
+  }, [init, isConnected, fetchSets]);
 
   // Sync chain state whenever engine or account changes
   useEffect(() => {
@@ -61,7 +67,7 @@ export const BlockchainPage: React.FC = () => {
   const handleStartGame = async () => {
     setTxLoading(true);
     try {
-      await startGame();
+      await startGame(selectedSetId);
     } finally {
       setTxLoading(false);
     }
@@ -145,6 +151,14 @@ export const BlockchainPage: React.FC = () => {
         
         <div className="flex items-center gap-3">
           {!chainState && (
+            <Link 
+              to="/blockchain/create-set"
+              className="text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-4 py-1.5 rounded text-sm transition-all"
+            >
+              Set Creator
+            </Link>
+          )}
+          {!chainState && (
             <button
               onClick={handleStartGame}
               disabled={txLoading}
@@ -159,13 +173,31 @@ export const BlockchainPage: React.FC = () => {
 
       {!chainState ? (
         <div className="flex-1 flex items-center justify-center bg-slate-950">
-          <div className="text-center">
-            <p className="text-slate-500 mb-4">No active game found for this account.</p>
+          <div className="text-center bg-slate-900 p-8 rounded-3xl border border-white/5 shadow-2xl">
+            <h3 className="text-2xl font-bold mb-6 text-white">Initialize New Session</h3>
+            <p className="text-slate-500 mb-8">Select a card set to play on the Substrate blockchain.</p>
+            
+            <div className="flex flex-col gap-4 max-w-xs mx-auto mb-8">
+              <label className="text-xs font-bold text-slate-500 uppercase text-left ml-1">Select Card Set</label>
+              <select 
+                value={selectedSetId}
+                onChange={(e) => setSelectedSetId(parseInt(e.target.value))}
+                className="bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-yellow-500/50 appearance-none cursor-pointer"
+              >
+                {availableSets.map(set => (
+                  <option key={set.id} value={set.id}>
+                    Set #{set.id} ({set.cards.length} Cards)
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button
               onClick={handleStartGame}
-              className="text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-6 py-2 rounded-full transition-all"
+              disabled={txLoading}
+              className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black px-12 py-4 rounded-full transition-all transform hover:scale-105 disabled:opacity-50 shadow-lg shadow-yellow-500/20"
             >
-              Initialize Game on Substrate
+              {txLoading ? 'TRANSACTING...' : 'START GAME ON-CHAIN'}
             </button>
           </div>
         </div>

@@ -31,14 +31,20 @@ interface BlockchainStore {
   blockNumber: number | null;
   isRefreshing: boolean;
   lastRefresh: number;
+  allCards: any[];
+  availableSets: any[];
 
   // Actions
   connect: () => Promise<void>;
   selectAccount: (account: any) => Promise<void>;
-  startGame: () => Promise<void>;
+  startGame: (set_id?: number) => Promise<void>;
   refreshGameState: (force?: boolean) => Promise<void>;
   submitTurnOnChain: () => Promise<void>;
   fetchDeck: () => any[];
+  fetchCards: () => Promise<void>;
+  fetchSets: () => Promise<void>;
+  submitCard: (cardData: any, metadata: any) => Promise<void>;
+  createCardSet: (cards: { card_id: number, rarity: number }[]) => Promise<void>;
 }
 
 const DEV_ACCOUNTS = ["Alice", "Bob", "Charlie", "Dave", "Eve", "Ferdie"];
@@ -219,13 +225,13 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
     }
   },
 
-  startGame: async () => {
+  startGame: async (set_id = 0) => {
     const { api, selectedAccount } = get();
     if (!api || !selectedAccount) return;
 
     try {
-      // Start game with set_id 0 (Starter Set)
-      const tx = api.tx.AutoBattle.start_game({ set_id: 0 });
+      // Start game with selected set_id
+      const tx = api.tx.AutoBattle.start_game(set_id);
 
       await tx.signAndSubmit(selectedAccount.polkadotSigner);
       await get().refreshGameState();
@@ -276,6 +282,111 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
     } catch (e) {
       console.error("Failed to fetch deck:", e);
       return [];
+    }
+  },
+
+  allCards: [],
+  availableSets: [],
+
+  fetchCards: async () => {
+    const { api } = get();
+    if (!api) return;
+
+    try {
+      // Fetch all UserCards and CardMetadataStore
+      const cardEntries = await api.query.AutoBattle.UserCards.getEntries();
+      const metadataEntries = await api.query.AutoBattle.CardMetadataStore.getEntries();
+
+      const metadataMap = new Map();
+      metadataEntries.forEach((entry: any) => {
+        const meta = entry.value.metadata;
+        metadataMap.set(entry.keyArgs[0], {
+          name: meta.name.asText(),
+          emoji: meta.emoji.asText(),
+          description: meta.description.asText()
+        });
+      });
+
+      const cards = cardEntries.map((entry: any) => {
+        const id = entry.keyArgs[0];
+        const metadata = metadataMap.get(id);
+        return {
+          id,
+          data: entry.value.data,
+          metadata: metadata || { name: `Card #${id}`, emoji: '❓', description: '' },
+          creator: entry.value.creator
+        };
+      });
+
+      set({ allCards: cards });
+    } catch (err) {
+      console.error("Failed to fetch cards:", err);
+    }
+  },
+
+  fetchSets: async () => {
+    const { api } = get();
+    if (!api) return;
+
+    try {
+      const setEntries = await api.query.AutoBattle.CardSets.getEntries();
+      const sets = setEntries.map((entry: any) => ({
+        id: Number(entry.keyArgs[0]),
+        cards: entry.value.cards
+      }));
+      set({ availableSets: sets });
+    } catch (err) {
+      console.error("Failed to fetch sets:", err);
+    }
+  },
+
+  submitCard: async (cardData, metadata) => {
+    const { api, selectedAccount } = get();
+    if (!api || !selectedAccount) return;
+
+    try {
+      // 1. Submit the card data
+      const submitTx = api.tx.AutoBattle.submit_card(cardData);
+      await submitTx.signAndSubmit(selectedAccount.polkadotSigner);
+
+      // We need to wait for the card to be indexed to get the ID,
+      // but for simplicity in this prototype, we'll just fetch next card ID
+      const nextId = await api.query.AutoBattle.NextUserCardId.getValue();
+      const cardId = Number(nextId) - 1;
+
+      // 2. Set metadata
+      const metadataTx = api.tx.AutoBattle.set_card_metadata(
+        cardId,
+        {
+          name: Binary.fromText(metadata.name),
+          emoji: Binary.fromText(metadata.emoji),
+          description: Binary.fromText(metadata.description)
+        }
+      );
+      await metadataTx.signAndSubmit(selectedAccount.polkadotSigner);
+
+      await get().fetchCards();
+    } catch (err) {
+      console.error("Submit card failed:", err);
+      throw err;
+    }
+  },
+
+  createCardSet: async (cards) => {
+    const { api, selectedAccount } = get();
+    if (!api || !selectedAccount) return;
+
+    try {
+
+      console.log({ cards })
+
+      const tx = api.tx.AutoBattle.create_card_set(cards);
+
+      console.log("Hi shawn")
+      await tx.signAndSubmit(selectedAccount.polkadotSigner);
+    } catch (err) {
+      console.error("Create card set failed:", err);
+      throw err;
     }
   }
 }));

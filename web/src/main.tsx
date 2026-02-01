@@ -6,6 +6,7 @@ import App from './App.tsx';
 import { SandboxPage } from './components/SandboxPage.tsx';
 import { MultiplayerPage } from './components/MultiplayerPage.tsx';
 import { BlockchainPage } from './components/BlockchainPage.tsx';
+import { CreateSetPage } from './components/CreateSetPage.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/sandbox" element={<SandboxPage />} />
         <Route path="/multiplayer" element={<MultiplayerPage />} />
         <Route path="/blockchain" element={<BlockchainPage />} />
+        <Route path="/blockchain/create-set" element={<CreateSetPage />} />
       </Routes>
     </HashRouter>
   </StrictMode>
