@@ -137,6 +137,12 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
         console.warn("Wallet extension not available:", walletErr);
       }
 
+      // Fetch available sets and cards
+      await Promise.all([
+        get().fetchSets(),
+        get().fetchCards(),
+      ]);
+
       if (get().selectedAccount) {
         await get().refreshGameState();
       }
