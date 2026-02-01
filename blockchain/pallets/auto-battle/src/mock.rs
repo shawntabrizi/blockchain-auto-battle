@@ -64,14 +64,14 @@ impl crate::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> TestState {
-    let mut t = GenesisConfig::<Test>::default()
-        .build_storage()
-        .unwrap();
+    let mut t = GenesisConfig::<Test>::default().build_storage().unwrap();
 
     // Initialize AutoBattle genesis
     crate::GenesisConfig::<Test> {
         _phantom: Default::default(),
-    }.assimilate_storage(&mut t).unwrap();
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
 
     t.into()
 }

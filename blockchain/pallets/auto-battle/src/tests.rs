@@ -243,12 +243,21 @@ fn test_submit_card_and_metadata() {
 fn test_create_card_set() {
     new_test_ext().execute_with(|| {
         let account_id = 1;
-        
+
         // Cards 1-5 already exist from genesis
         let entries = vec![
-            crate::CardSetEntryInput { card_id: 1, rarity: 10 },
-            crate::CardSetEntryInput { card_id: 2, rarity: 5 },
-            crate::CardSetEntryInput { card_id: 3, rarity: 0 }, // Token
+            crate::CardSetEntryInput {
+                card_id: 1,
+                rarity: 10,
+            },
+            crate::CardSetEntryInput {
+                card_id: 2,
+                rarity: 5,
+            },
+            crate::CardSetEntryInput {
+                card_id: 3,
+                rarity: 0,
+            }, // Token
         ];
 
         assert_ok!(AutoBattle::create_card_set(
@@ -265,8 +274,55 @@ fn test_create_card_set() {
         assert_eq!(set.cards[2].rarity, 0);
 
         // Try to start game with new set
-        assert_ok!(AutoBattle::start_game(RuntimeOrigin::signed(account_id), set_id));
+        assert_ok!(AutoBattle::start_game(
+            RuntimeOrigin::signed(account_id),
+            set_id
+        ));
         let session = ActiveGame::<Test>::get(account_id).unwrap();
         assert_eq!(session.set_id, set_id);
+    });
+}
+
+#[test]
+fn test_create_card_set_rarity_overflow() {
+    new_test_ext().execute_with(|| {
+        let account_id = 1;
+
+        // Cards 1 and 2 exist from genesis
+        let entries = vec![
+            crate::CardSetEntryInput {
+                card_id: 1,
+                rarity: u32::MAX,
+            },
+            crate::CardSetEntryInput {
+                card_id: 2,
+                rarity: 1,
+            },
+        ];
+
+        // Should fail due to overflow
+        assert_noop!(
+            AutoBattle::create_card_set(RuntimeOrigin::signed(account_id), entries),
+            Error::<Test>::RarityOverflow
+        );
+    });
+}
+
+#[test]
+fn test_create_card_set_zero_rarity() {
+    new_test_ext().execute_with(|| {
+        let account_id = 1;
+
+        // Cards 1 exists from genesis
+        let entries = vec![crate::CardSetEntryInput {
+            card_id: 1,
+            rarity: 0,
+        }];
+
+        // Should fail because total rarity is 0
+        assert_noop!(
+            AutoBattle::create_card_set(RuntimeOrigin::signed(account_id), entries),
+            Error::<Test>::InvalidRarity
+        );
     });
 }

@@ -40,7 +40,9 @@ pub enum GamePhase {
 }
 
 /// An entry in a card set, mapping a card to its rarity.
-#[derive(Debug, Clone, Encode, Decode, DecodeWithMemTracking, TypeInfo, PartialEq, MaxEncodedLen)]
+#[derive(
+    Debug, Clone, Encode, Decode, DecodeWithMemTracking, TypeInfo, PartialEq, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CardSetEntry {
     pub card_id: CardId,

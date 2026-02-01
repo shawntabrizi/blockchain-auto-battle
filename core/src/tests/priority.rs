@@ -124,8 +124,7 @@ fn test_priority_tiebreaker_team() {
         conditions: vec![],
         max_triggers: None,
     };
-    let e_card =
-        UnitCard::new(CardId(2), "Enemy", "Enemy", 5, 5, 0, 0).with_ability(ability);
+    let e_card = UnitCard::new(CardId(2), "Enemy", "Enemy", 5, 5, 0, 0).with_ability(ability);
     let e_unit = CombatUnit::from_card(e_card);
 
     let p_board = vec![p_unit];

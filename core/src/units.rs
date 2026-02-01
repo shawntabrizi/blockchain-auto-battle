@@ -1094,11 +1094,9 @@ pub fn get_card_set(set_id: u32) -> Option<CardSet> {
             // Rarity is now explicitly defined in the template
             let cards = get_all_templates()
                 .into_iter()
-                .map(|(c, rarity)| {
-                    crate::state::CardSetEntry {
-                        card_id: c.id,
-                        rarity,
-                    }
+                .map(|(c, rarity)| crate::state::CardSetEntry {
+                    card_id: c.id,
+                    rarity,
                 })
                 .collect();
 

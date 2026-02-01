@@ -17,10 +17,10 @@ pub mod weights;
 
 #[frame::pallet]
 pub mod pallet {
+    use alloc::collections::BTreeMap;
     use alloc::{vec, vec::Vec};
     use frame::prelude::*;
     use frame::traits::{Get, Randomness};
-    use alloc::collections::BTreeMap;
 
     // Import types from core engine
     use manalimit_core::bounded::{
@@ -294,8 +294,7 @@ pub mod pallet {
     /// Map of card hashes to their unique CardId.
     /// Used to prevent duplicate cards from being stored.
     #[pallet::storage]
-    pub type UserCardHashes<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::Hash, u32, OptionQuery>;
+    pub type UserCardHashes<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, u32, OptionQuery>;
 
     /// User-submitted cards indexed by their unique CardId.
     #[pallet::storage]
@@ -333,10 +332,7 @@ pub mod pallet {
             card_hash: T::Hash,
         },
         /// Card metadata has been set or updated.
-        CardMetadataUpdated {
-            author: T::AccountId,
-            card_id: u32,
-        },
+        CardMetadataUpdated { author: T::AccountId, card_id: u32 },
         /// A new card set has been created.
         SetCreated { creator: T::AccountId, set_id: u32 },
     }
@@ -359,10 +355,24 @@ pub mod pallet {
         CardNotFound,
         /// Only the card creator can perform this action.
         NotCardCreator,
+        /// The total rarity of the cards in the set would overflow.
+        RarityOverflow,
+        /// The total rarity of the cards in the set is zero.
+        InvalidRarity,
     }
 
     /// Input for creating a card set.
-    #[derive(Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen, Clone, RuntimeDebug, PartialEq, Eq)]
+    #[derive(
+        Encode,
+        Decode,
+        DecodeWithMemTracking,
+        TypeInfo,
+        MaxEncodedLen,
+        Clone,
+        RuntimeDebug,
+        PartialEq,
+        Eq,
+    )]
     pub struct CardSetEntryInput {
         pub card_id: u32,
         pub rarity: u32,
@@ -395,7 +405,8 @@ pub mod pallet {
                 };
 
                 let entry = UserCardEntry {
-                    creator: T::AccountId::decode(&mut frame::traits::TrailingZeroInput::zeroes()).unwrap(),
+                    creator: T::AccountId::decode(&mut frame::traits::TrailingZeroInput::zeroes())
+                        .unwrap(),
                     data,
                     created_at: Zero::zero(),
                 };
@@ -412,9 +423,7 @@ pub mod pallet {
                 }
             }
 
-            let card_set = CardSet {
-                cards,
-            };
+            let card_set = CardSet { cards };
 
             CardSets::<T>::insert(0, BoundedCardSet::<T>::from(card_set));
             NextSetId::<T>::put(1);
@@ -504,11 +513,8 @@ pub mod pallet {
             let card_set: CardSet = card_set_bounded.into();
             let card_pool = Self::get_card_pool(&card_set);
 
-            let mut core_state = GameState::reconstruct(
-                card_pool,
-                session.set_id,
-                session.state.clone().into(),
-            );
+            let mut core_state =
+                GameState::reconstruct(card_pool, session.set_id, session.state.clone().into());
 
             let core_action: CommitTurnAction = action.into();
 
@@ -699,11 +705,8 @@ pub mod pallet {
             let card_set: CardSet = card_set_bounded.into();
             let card_pool = Self::get_card_pool(&card_set);
 
-            let mut core_state = GameState::reconstruct(
-                card_pool,
-                session.set_id,
-                session.state.clone().into(),
-            );
+            let mut core_state =
+                GameState::reconstruct(card_pool, session.set_id, session.state.clone().into());
 
             core_state.local_state.game_seed = new_seed;
 
@@ -820,8 +823,20 @@ pub mod pallet {
 
             // Verify all cards exist
             for entry in &cards {
-                ensure!(UserCards::<T>::contains_key(entry.card_id), Error::<T>::CardNotFound);
+                ensure!(
+                    UserCards::<T>::contains_key(entry.card_id),
+                    Error::<T>::CardNotFound
+                );
             }
+
+            // Check for total rarity overflow
+            let mut total_rarity: u32 = 0;
+            for entry in &cards {
+                total_rarity = total_rarity
+                    .checked_add(entry.rarity)
+                    .ok_or(Error::<T>::RarityOverflow)?;
+            }
+            ensure!(total_rarity > 0, Error::<T>::InvalidRarity);
 
             let set_id = NextSetId::<T>::get();
 
@@ -838,7 +853,10 @@ pub mod pallet {
             CardSets::<T>::insert(set_id, BoundedCardSet::<T>::from(card_set));
             NextSetId::<T>::put(set_id.saturating_add(1));
 
-            Self::deposit_event(Event::SetCreated { creator: who, set_id });
+            Self::deposit_event(Event::SetCreated {
+                creator: who,
+                set_id,
+            });
 
             Ok(())
         }
@@ -851,7 +869,10 @@ pub mod pallet {
 
             for entry in &card_set.cards {
                 if let Some(user_entry) = UserCards::<T>::get(entry.card_id.0) {
-                    card_pool.insert(entry.card_id, Self::entry_to_unit_card(entry.card_id, user_entry));
+                    card_pool.insert(
+                        entry.card_id,
+                        Self::entry_to_unit_card(entry.card_id, user_entry),
+                    );
                 }
             }
 
@@ -859,19 +880,17 @@ pub mod pallet {
         }
 
         /// Helper to convert UserCardEntry to UnitCard.
-        fn entry_to_unit_card(id: manalimit_core::types::CardId, entry: UserCardEntry<T>) -> UnitCard {
+        fn entry_to_unit_card(
+            id: manalimit_core::types::CardId,
+            entry: UserCardEntry<T>,
+        ) -> UnitCard {
             UnitCard {
                 id,
                 template_id: alloc::string::String::new(), // Not used in game logic
                 name: alloc::string::String::new(),        // Not used in game logic
                 stats: entry.data.stats,
                 economy: entry.data.economy,
-                abilities: entry
-                    .data
-                    .abilities
-                    .into_iter()
-                    .map(|a| a.into())
-                    .collect(),
+                abilities: entry.data.abilities.into_iter().map(|a| a.into()).collect(),
             }
         }
         /// Helper to generate a unique seed per user/block/context
