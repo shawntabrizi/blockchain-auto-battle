@@ -353,7 +353,7 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
 
     try {
       // 1. Submit the card data
-      const submitTx = api.tx.AutoBattle.submit_card(cardData);
+      const submitTx = api.tx.AutoBattle.submit_card({ card_data: cardData });
       await submitTx.signAndSubmit(selectedAccount.polkadotSigner);
 
       // We need to wait for the card to be indexed to get the ID,
@@ -362,14 +362,14 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
       const cardId = Number(nextId) - 1;
 
       // 2. Set metadata
-      const metadataTx = api.tx.AutoBattle.set_card_metadata(
-        cardId,
-        {
+      const metadataTx = api.tx.AutoBattle.set_card_metadata({
+        card_id: cardId,
+        metadata: {
           name: Binary.fromText(metadata.name),
           emoji: Binary.fromText(metadata.emoji),
           description: Binary.fromText(metadata.description)
         }
-      );
+      });
       await metadataTx.signAndSubmit(selectedAccount.polkadotSigner);
 
       await get().fetchCards();
