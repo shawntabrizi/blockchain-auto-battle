@@ -140,27 +140,6 @@ pub mod pallet {
         pub abilities: BoundedVec<BoundedAbility<T>, T::MaxAbilities>,
     }
 
-    /// A user-submitted card entry stored on-chain.
-    #[derive(
-        Encode,
-        Decode,
-        DecodeWithMemTracking,
-        TypeInfo,
-        CloneNoBound,
-        PartialEqNoBound,
-        RuntimeDebugNoBound,
-        MaxEncodedLen,
-    )]
-    #[scale_info(skip_type_params(T))]
-    pub struct UserCardEntry<T: Config> {
-        /// The creator who submitted this card
-        pub creator: T::AccountId,
-        /// The core card data
-        pub data: UserCardData<T>,
-        /// Block number when the card was created
-        pub created_at: BlockNumberFor<T>,
-    }
-
     /// Metadata for a card (name, emoji, etc. - not used in game logic).
     #[derive(
         Encode,
@@ -195,12 +174,12 @@ pub mod pallet {
     )]
     #[scale_info(skip_type_params(T))]
     pub struct CardMetadataEntry<T: Config> {
-        /// The account who set/updated this metadata
-        pub author: T::AccountId,
+        /// The creator who submitted this card
+        pub creator: T::AccountId,
         /// The metadata
         pub metadata: CardMetadata<T>,
-        /// Block number when the metadata was last updated
-        pub updated_at: BlockNumberFor<T>,
+        /// Block number when the card was created
+        pub created_at: BlockNumberFor<T>,
     }
 
     /// A game session stored on-chain.
@@ -299,7 +278,7 @@ pub mod pallet {
     /// User-submitted cards indexed by their unique CardId.
     #[pallet::storage]
     pub type UserCards<T: Config> =
-        StorageMap<_, Blake2_128Concat, u32, UserCardEntry<T>, OptionQuery>;
+        StorageMap<_, Blake2_128Concat, u32, UserCardData<T>, OptionQuery>;
 
     /// Card metadata indexed by CardId.
     /// Metadata is separate from game logic data and can be updated by the creator.
@@ -332,7 +311,7 @@ pub mod pallet {
             card_hash: T::Hash,
         },
         /// Card metadata has been set or updated.
-        CardMetadataUpdated { author: T::AccountId, card_id: u32 },
+        CardMetadataUpdated { creator: T::AccountId, card_id: u32 },
         /// A new card set has been created.
         SetCreated { creator: T::AccountId, set_id: u32 },
     }
@@ -404,14 +383,19 @@ pub mod pallet {
                     ),
                 };
 
-                let entry = UserCardEntry {
+                UserCards::<T>::insert(card_id, data);
+
+                let metadata_entry = CardMetadataEntry {
                     creator: T::AccountId::decode(&mut frame::traits::TrailingZeroInput::zeroes())
                         .unwrap(),
-                    data,
+                    metadata: CardMetadata {
+                        name: BoundedVec::truncate_from(card.name.as_bytes().to_vec()),
+                        emoji: BoundedVec::default(),
+                        description: BoundedVec::default(),
+                    },
                     created_at: Zero::zero(),
                 };
-
-                UserCards::<T>::insert(card_id, entry);
+                CardMetadataStore::<T>::insert(card_id, metadata_entry);
 
                 cards.push(manalimit_core::state::CardSetEntry {
                     card_id: card.id,
@@ -758,15 +742,22 @@ pub mod pallet {
             // Get next ID and increment
             let card_id = NextUserCardId::<T>::get();
 
-            // Create and store the card entry
-            let card_entry = UserCardEntry {
+            // Create and store the card data
+            UserCards::<T>::insert(card_id, &card_data);
+
+            // Create and store initial metadata
+            let metadata_entry = CardMetadataEntry {
                 creator: who.clone(),
-                data: card_data,
+                metadata: CardMetadata {
+                    name: BoundedVec::default(),
+                    emoji: BoundedVec::default(),
+                    description: BoundedVec::default(),
+                },
                 created_at: frame_system::Pallet::<T>::block_number(),
             };
 
             UserCardHashes::<T>::insert(&card_hash, card_id);
-            UserCards::<T>::insert(card_id, card_entry);
+            CardMetadataStore::<T>::insert(card_id, metadata_entry);
             NextUserCardId::<T>::put(card_id.saturating_add(1));
 
             Self::deposit_event(Event::CardSubmitted {
@@ -790,22 +781,18 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
 
             // Ensure the card exists
-            let card_entry = UserCards::<T>::get(card_id).ok_or(Error::<T>::CardNotFound)?;
+            let mut entry = CardMetadataStore::<T>::get(card_id).ok_or(Error::<T>::CardNotFound)?;
 
             // Ensure the caller is the card creator
-            ensure!(card_entry.creator == who, Error::<T>::NotCardCreator);
+            ensure!(entry.creator == who, Error::<T>::NotCardCreator);
 
-            // Create and store the metadata entry
-            let metadata_entry = CardMetadataEntry {
-                author: who.clone(),
-                metadata,
-                updated_at: frame_system::Pallet::<T>::block_number(),
-            };
+            // Update the metadata
+            entry.metadata = metadata;
 
-            CardMetadataStore::<T>::insert(card_id, metadata_entry);
+            CardMetadataStore::<T>::insert(card_id, entry);
 
             Self::deposit_event(Event::CardMetadataUpdated {
-                author: who,
+                creator: who,
                 card_id,
             });
 
@@ -868,10 +855,10 @@ pub mod pallet {
             let mut card_pool = BTreeMap::new();
 
             for entry in &card_set.cards {
-                if let Some(user_entry) = UserCards::<T>::get(entry.card_id.0) {
+                if let Some(user_data) = UserCards::<T>::get(entry.card_id.0) {
                     card_pool.insert(
                         entry.card_id,
-                        Self::entry_to_unit_card(entry.card_id, user_entry),
+                        Self::entry_to_unit_card(entry.card_id, user_data),
                     );
                 }
             }
@@ -879,18 +866,18 @@ pub mod pallet {
             card_pool
         }
 
-        /// Helper to convert UserCardEntry to UnitCard.
+        /// Helper to convert UserCardData to UnitCard.
         fn entry_to_unit_card(
             id: manalimit_core::types::CardId,
-            entry: UserCardEntry<T>,
+            data: UserCardData<T>,
         ) -> UnitCard {
             UnitCard {
                 id,
                 template_id: alloc::string::String::new(), // Not used in game logic
                 name: alloc::string::String::new(),        // Not used in game logic
-                stats: entry.data.stats,
-                economy: entry.data.economy,
-                abilities: entry.data.abilities.into_iter().map(|a| a.into()).collect(),
+                stats: data.stats,
+                economy: data.economy,
+                abilities: data.abilities.into_iter().map(|a| a.into()).collect(),
             }
         }
         /// Helper to generate a unique seed per user/block/context

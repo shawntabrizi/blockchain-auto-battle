@@ -309,7 +309,8 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
         metadataMap.set(entry.keyArgs[0], {
           name: meta.name.asText(),
           emoji: meta.emoji.asText(),
-          description: meta.description.asText()
+          description: meta.description.asText(),
+          creator: entry.value.creator
         });
       });
 
@@ -318,9 +319,9 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
         const metadata = metadataMap.get(id);
         return {
           id,
-          data: entry.value.data,
+          data: entry.value,
           metadata: metadata || { name: `Card #${id}`, emoji: '❓', description: '' },
-          creator: entry.value.creator
+          creator: metadata?.creator
         };
       });
 

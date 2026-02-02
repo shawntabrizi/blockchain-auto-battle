@@ -189,8 +189,11 @@ fn test_submit_card_and_metadata() {
         let card_hash = <Test as frame_system::Config>::Hashing::hash_of(&card_data);
         let card_id = crate::UserCardHashes::<Test>::get(card_hash).unwrap();
         assert!(card_id >= 45); // 46 cards registered in genesis (0-45)
-        let entry = crate::UserCards::<Test>::get(card_id).unwrap();
-        assert_eq!(entry.creator, account_id);
+        assert!(crate::UserCards::<Test>::contains_key(card_id));
+        
+        // Verify creator info in metadata store
+        let meta_entry = crate::CardMetadataStore::<Test>::get(card_id).unwrap();
+        assert_eq!(meta_entry.creator, account_id);
 
         // Submit same card again (should fail)
         assert_noop!(
@@ -212,7 +215,7 @@ fn test_submit_card_and_metadata() {
 
         // Verify metadata
         let meta_entry = crate::CardMetadataStore::<Test>::get(card_id).unwrap();
-        assert_eq!(meta_entry.author, account_id);
+        assert_eq!(meta_entry.creator, account_id);
         assert_eq!(meta_entry.metadata.name, metadata.name);
 
         // Submit different card
