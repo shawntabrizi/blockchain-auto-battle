@@ -151,12 +151,20 @@ export const BlockchainPage: React.FC = () => {
         
         <div className="flex items-center gap-3">
           {!chainState && (
-            <Link 
-              to="/blockchain/create-set"
-              className="text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-4 py-1.5 rounded text-sm transition-all"
-            >
-              Set Creator
-            </Link>
+            <>
+              <Link 
+                to="/blockchain/create-card"
+                className="text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-4 py-1.5 rounded text-sm transition-all"
+              >
+                Card Creator
+              </Link>
+              <Link 
+                to="/blockchain/create-set"
+                className="text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-4 py-1.5 rounded text-sm transition-all"
+              >
+                Set Creator
+              </Link>
+            </>
           )}
           {!chainState && (
             <button

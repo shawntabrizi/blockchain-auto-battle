@@ -20,6 +20,7 @@
     "@polkadot-api/substrate-bindings": "^0.17.0",
     "@polkadot-labs/hdkd": "^0.0.26",
     "@polkadot-labs/hdkd-helpers": "^0.0.27",
+    "emoji-picker-react": "^4.17.4",
     "peerjs": "^1.5.5",
     "polkadot-api": "^1.23.3",
     "react": "^18.3.1",
