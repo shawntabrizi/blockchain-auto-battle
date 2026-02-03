@@ -237,7 +237,7 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
 
     try {
       // Start game with selected set_id
-      const tx = api.tx.AutoBattle.start_game(set_id);
+      const tx = api.tx.AutoBattle.start_game({ set_id });
 
       await tx.signAndSubmit(selectedAccount.polkadotSigner);
       await get().refreshGameState();
