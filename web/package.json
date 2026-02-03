@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@polkadot-api/descriptors": "file:.papi/descriptors",
+    "@polkadot-api/metadata-builders": "^0.13.9",
     "@polkadot-api/substrate-bindings": "^0.17.0",
     "@polkadot-labs/hdkd": "^0.0.26",
     "@polkadot-labs/hdkd-helpers": "^0.0.27",

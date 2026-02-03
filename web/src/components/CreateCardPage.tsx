@@ -1,23 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useBlockchainStore } from '../store/blockchainStore';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { 
-  Ability, 
-  AbilityTrigger, 
-  AbilityEffect, 
-  AbilityTarget, 
-  TargetScope, 
-  StatType, 
-  SortOrder,
-  Condition 
+import {
+  Ability,
+  AbilityTrigger,
+  AbilityEffect,
+  AbilityTarget,
+  TargetScope,
+  StatType,
 } from '../types';
 
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 
 const TRIGGERS: AbilityTrigger[] = [
-  'OnStart', 'OnFaint', 'OnAllyFaint', 'OnHurt', 'OnSpawn', 
-  'OnAllySpawn', 'OnEnemySpawn', 'BeforeUnitAttack', 
+  'OnStart', 'OnFaint', 'OnAllyFaint', 'OnHurt', 'OnSpawn',
+  'OnAllySpawn', 'OnEnemySpawn', 'BeforeUnitAttack',
   'AfterUnitAttack', 'BeforeAnyAttack', 'AfterAnyAttack'
 ];
 
@@ -145,10 +143,10 @@ export const CreateCardPage: React.FC = () => {
 
   const updateTargetType = (type: string) => {
     if (newAbility.effect.type === 'SpawnUnit') return;
-    
+
     let target: AbilityTarget;
     const scope: TargetScope = 'Enemies';
-    
+
     if (type === 'Position') {
       target = { type: 'Position', data: { scope, index: 0 } };
     } else if (type === 'Adjacent') {
@@ -160,7 +158,7 @@ export const CreateCardPage: React.FC = () => {
     } else {
       target = { type: 'All', data: { scope } };
     }
-    
+
     setNewAbility({
       ...newAbility,
       effect: { ...newAbility.effect, target } as AbilityEffect
@@ -250,7 +248,7 @@ export const CreateCardPage: React.FC = () => {
                       >
                         {cardForm.emoji}
                       </button>
-                      
+
                       {showEmojiPicker && (
                         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
                           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowEmojiPicker(false)}></div>
@@ -383,7 +381,7 @@ export const CreateCardPage: React.FC = () => {
                       <div className="text-sm font-bold text-yellow-500">{ability.name}</div>
                       <div className="text-xs text-slate-400 italic">{ability.trigger}</div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => removeAbility(idx)}
                       className="text-slate-500 hover:text-red-500"
                     >
