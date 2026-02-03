@@ -18,3 +18,9 @@ This project uses the modern `polkadot-api` (PAPI) library for blockchain intera
 - Connection logic resides in `blockchainStore.ts`.
 - Use `getTypedCodecs` for manual SCALE decoding when syncing with WASM.
 - Throttle chain state refreshes to avoid UI lag.
+
+## PAPI JSON Coercion (Frontend)
+- Use `web/src/utils/papiCoercion.ts` when submitting UI-friendly JSON to `polkadot-api`.
+- This is required when JSON is produced via Rust `serde` (e.g. `{ type, data }` enums) but PAPI expects `{ type, value }` enum wrappers.
+- Build the coercer once after connecting, then apply it to payloads before `api.tx.*` submission.
+- Current usage: `AutoBattle.submit_card` uses a coercer for `card_data`.
