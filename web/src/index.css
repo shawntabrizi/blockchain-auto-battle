@@ -163,3 +163,124 @@ body {
     }
   }
 }
+
+@media (max-width: 900px) {
+  body {
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100svh;
+  }
+
+  .game-layout {
+    height: 100svh;
+    width: 100vw;
+    overflow: hidden;
+  }
+
+  .show-card-panel {
+    margin-left: 0 !important;
+  }
+
+  .hud {
+    height: 3.25rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .arena {
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+  }
+
+  .unit-card,
+  .empty-slot {
+    width: 4.5rem;
+    height: 6rem;
+  }
+
+  .unit-card {
+    padding: 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  .shop {
+    height: 10.5rem;
+  }
+
+  .shop-side {
+    width: 4.5rem;
+  }
+
+  .hand-row {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0 0.5rem 0.25rem;
+    scroll-snap-type: x mandatory;
+  }
+
+  .hand-row > * {
+    scroll-snap-align: center;
+  }
+
+  .hand-row::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .hand-row::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 9999px;
+  }
+
+  .card-detail-panel {
+    top: auto !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 45%;
+    border-right: none;
+    border-top: 1px solid #374151;
+  }
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  .rotate-prompt {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 8, 16, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .rotate-prompt__card {
+    width: min(90vw, 320px);
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .rotate-prompt__icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: #facc15;
+  }
+
+  .rotate-prompt__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f9fafb;
+    margin-bottom: 0.5rem;
+  }
+
+  .rotate-prompt__subtitle {
+    font-size: 0.85rem;
+    color: #9ca3af;
+  }
+}

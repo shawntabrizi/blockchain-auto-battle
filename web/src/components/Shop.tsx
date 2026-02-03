@@ -8,7 +8,7 @@ export function Shop() {
 
   // Drag and drop handlers for hand cards
   const handleHandDragStart = (e: React.DragEvent, handIndex: number) => {
-    setSelection({ type: "hand", index: handIndex });
+    setSelection({ type: 'hand', index: handIndex });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', `hand-${handIndex}`);
   };
@@ -74,12 +74,13 @@ export function Shop() {
   };
 
   return (
-    <div className="h-48 bg-shop-bg border-t-2 border-gray-600">
+    <div className="shop h-48 bg-shop-bg border-t-2 border-gray-600">
       <div className="flex h-full">
         {/* Left: Ash Pile */}
         <div
-          className={`w-32 flex flex-col items-center justify-center border-r border-gray-700 transition-colors duration-200 ${isAshHovered ? 'bg-red-900/30' : ''
-            }`}
+          className={`shop-side w-32 flex flex-col items-center justify-center border-r border-gray-700 transition-colors duration-200 ${
+            isAshHovered ? 'bg-red-900/30' : ''
+          }`}
           onDragOver={handleAshDragOver}
           onDragLeave={handleAshDragLeave}
           onMouseEnter={handleAshMouseEnter}
@@ -88,10 +89,11 @@ export function Shop() {
         >
           <div className="text-sm text-gray-400 mb-2">Ash Pile</div>
           <div
-            className={`w-16 h-16 rounded-full bg-gradient-to-br from-red-900 to-orange-800 flex items-center justify-center text-2xl shadow-lg transition-all cursor-pointer border-2 border-orange-500/50 ${isAshHovered
-              ? 'shadow-red-400/80 scale-110 ring-4 ring-red-400/30'
-              : 'shadow-red-900/50 hover:shadow-red-700/70'
-              }`}
+            className={`w-16 h-16 rounded-full bg-gradient-to-br from-red-900 to-orange-800 flex items-center justify-center text-2xl shadow-lg transition-all cursor-pointer border-2 border-orange-500/50 ${
+              isAshHovered
+                ? 'shadow-red-400/80 scale-110 ring-4 ring-red-400/30'
+                : 'shadow-red-900/50 hover:shadow-red-700/70'
+            }`}
             onClick={(e) => {
               e.stopPropagation();
               if (selection?.type === 'hand') {
@@ -111,13 +113,13 @@ export function Shop() {
         </div>
 
         {/* Center: Hand */}
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="shop-hand flex-1 flex flex-col items-center justify-center">
           <div className="flex items-center gap-1 mb-2">
             <span className="text-sm text-gray-400">Hand</span>
             <span className="text-xs text-gray-500">({view.bag_count} in draw pool)</span>
           </div>
 
-          <div className="flex gap-3">
+          <div className="hand-row flex gap-3">
             {view.hand
               .map((card, i) => ({ card, index: i }))
               .filter(({ card }) => card) // Only show non-null cards (not yet used)
@@ -139,7 +141,7 @@ export function Shop() {
         </div>
 
         {/* Right: Mana Tank */}
-        <div className="w-32 flex flex-col items-center justify-center border-l border-gray-700">
+        <div className="shop-side w-32 flex flex-col items-center justify-center border-l border-gray-700">
           <div className="text-sm text-gray-400 mb-2">Mana</div>
           <div className="relative w-16 h-24 bg-gray-900 rounded-lg border-2 border-mana-blue mana-tank overflow-hidden">
             {/* Mana level */}

@@ -10,7 +10,7 @@ export function Arena() {
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
-    setSelection({ type: "board", index });
+    setSelection({ type: 'board', index });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', `board-${index}`);
   };
@@ -63,7 +63,7 @@ export function Arena() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-8 py-4">
+    <div className="arena flex-1 flex flex-col items-center justify-center gap-8 py-4">
       <div className="flex gap-2 opacity-50">
         <div className="text-sm text-gray-500 mr-4 self-center">Enemy</div>
         {Array.from({ length: 5 }).map((_, i) => (

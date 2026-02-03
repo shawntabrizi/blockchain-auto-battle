@@ -40,33 +40,36 @@ export function GameLayout() {
   }
 
   // Card panel is visible during shop phase or when a board unit is selected
-  const showCardPanel = view?.phase === 'shop' || (selection?.type === 'board') || showBag;
+  const showCardPanel = view?.phase === 'shop' || selection?.type === 'board' || showBag;
   const selectedCard =
-    (view?.phase === 'shop' && selection?.type === 'hand' && view?.hand[selection!.index])
+    view?.phase === 'shop' && selection?.type === 'hand' && view?.hand[selection!.index]
       ? view.hand[selection!.index]!
-      : (selection?.type === 'bag' && bag?.[selection!.index])
+      : selection?.type === 'bag' && bag?.[selection!.index]
         ? cardSet?.find((c: any) => c.id === bag[selection!.index]) || null
         : null;
 
   // For board selections, create a card-like object from the unit data
-  const selectedBoardUnit = selection?.type === 'board' && view?.board[selection!.index]
-    ? view.board[selection!.index]!
-    : null;
+  const selectedBoardUnit =
+    selection?.type === 'board' && view?.board[selection!.index]
+      ? view.board[selection!.index]!
+      : null;
 
   const cardToShow = selectedCard || selectedBoardUnit;
 
   return (
-    <div className="h-full flex flex-col bg-board-bg">
+    <div className="game-layout h-full flex flex-col bg-board-bg">
       {/* Zone 1: Top HUD */}
       <HUD />
 
       {/* Zone 2: Arena (Board) with left panel */}
-      <div className={`flex-1 flex flex-col overflow-hidden ${showCardPanel ? 'ml-80' : ''}`}>
+      <div
+        className={`game-main flex-1 flex flex-col overflow-hidden ${showCardPanel ? 'ml-80 show-card-panel' : ''}`}
+      >
         <Arena />
       </div>
 
       {/* Zone 3: Command Deck (Shop) */}
-      <div className={showCardPanel ? 'ml-80' : ''}>
+      <div className={`game-shop ${showCardPanel ? 'ml-80 show-card-panel' : ''}`}>
         <Shop />
       </div>
 
@@ -76,6 +79,14 @@ export function GameLayout() {
       {/* Battle Overlay */}
       <BattleOverlay />
       <BagOverlay />
+
+      <div className="rotate-prompt" aria-hidden="true">
+        <div className="rotate-prompt__card">
+          <div className="rotate-prompt__icon">⟳</div>
+          <div className="rotate-prompt__title">Rotate your device</div>
+          <div className="rotate-prompt__subtitle">This game plays best in landscape mode.</div>
+        </div>
+      </div>
     </div>
   );
 }

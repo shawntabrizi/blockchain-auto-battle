@@ -8,7 +8,7 @@ interface UnitCardProps {
   onClick?: () => void;
   showCost?: boolean;
   showPitch?: boolean;
-  
+
   can_afford?: boolean;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
@@ -23,7 +23,7 @@ export function UnitCard({
   onClick,
   showCost = true,
   showPitch = true,
-  
+
   can_afford = true,
   draggable = false,
   onDragStart,
@@ -54,7 +54,7 @@ export function UnitCard({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={`
-        card relative w-24 h-32 ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} select-none bg-card-bg rounded-lg border-2 border-gray-600 p-2 transition-all duration-200
+        unit-card card relative w-24 h-32 ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} select-none bg-card-bg rounded-lg border-2 border-gray-600 p-2 transition-all duration-200
         ${isSelected ? 'card-selected ring-2 ring-yellow-400' : ''}
         
         ${!can_afford && showCost ? 'opacity-60' : ''}
@@ -80,9 +80,7 @@ export function UnitCard({
         {/* Health */}
         <div className="flex items-center text-sm">
           <span className="text-green-400">❤</span>
-          <span className="font-bold ml-1">
-            {displayHealth}
-          </span>
+          <span className="font-bold ml-1">{displayHealth}</span>
         </div>
       </div>
 
@@ -99,7 +97,6 @@ export function UnitCard({
           {card.pitch_value}
         </div>
       )}
-
     </div>
   );
 }
@@ -126,7 +123,7 @@ export function EmptySlot({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={`
-        slot w-24 h-32 cursor-pointer bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center transition-all duration-200
+        empty-slot slot w-24 h-32 cursor-pointer bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center transition-all duration-200
         ${isTarget ? 'border-yellow-400 bg-yellow-400/10' : ''}
       `}
     >

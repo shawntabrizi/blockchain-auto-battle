@@ -14,16 +14,24 @@ interface CardDetailPanelProps {
 
 type TabType = 'card' | 'rules' | 'mode';
 
-export function CardDetailPanel({ 
-  card, 
-  isVisible, 
+export function CardDetailPanel({
+  card,
+  isVisible,
   isSandbox = false,
   isReadOnly = false,
-  topOffset = '4rem' // Default top-16 (16 * 0.25rem = 4rem)
+  topOffset = '4rem', // Default top-16 (16 * 0.25rem = 4rem)
 }: CardDetailPanelProps) {
   const [activeTab, setActiveTab] = React.useState<TabType>('card');
   const navigate = useNavigate();
-  const { view, selection, pitchHandCard, pitchBoardUnit, setSelection, showRawJson, toggleShowRawJson } = useGameStore();
+  const {
+    view,
+    selection,
+    pitchHandCard,
+    pitchBoardUnit,
+    setSelection,
+    showRawJson,
+    toggleShowRawJson,
+  } = useGameStore();
 
   if (!isVisible) return null;
 
@@ -47,7 +55,7 @@ export function CardDetailPanel({
 
     const getTriggerDescription = (trigger: any): string => {
       const type = typeof trigger === 'string' ? trigger : trigger?.type;
-      
+
       switch (type) {
         case 'OnStart':
           return 'Battle Start';
@@ -92,9 +100,10 @@ export function CardDetailPanel({
           const a = data.attack || 0;
           return `Give ${a >= 0 ? '+' : ''}${a}/${h >= 0 ? '+' : ''}${h} to ${getTargetDescription(data.target)}`;
         case 'SpawnUnit':
-          const templateId = typeof data.template_id === 'string' 
-            ? data.template_id 
-            : data.template_id?.asText?.() || 'unit';
+          const templateId =
+            typeof data.template_id === 'string'
+              ? data.template_id
+              : data.template_id?.asText?.() || 'unit';
           return `Spawn a ${templateId.replace('_', ' ')}`;
         case 'Destroy':
           return `Destroy ${getTargetDescription(data.target)}`;
@@ -112,28 +121,44 @@ export function CardDetailPanel({
       const describeScope = (scope: any) => {
         const s = typeof scope === 'string' ? scope : scope?.type || 'unknown';
         switch (s) {
-          case 'SelfUnit': return 'this unit';
-          case 'Allies': return 'all allies';
-          case 'Enemies': return 'all enemies';
-          case 'All': return 'all units';
-          case 'AlliesOther': return 'all other allies';
-          case 'TriggerSource': return 'the target';
-          case 'Aggressor': return 'the attacker';
-          default: return s;
+          case 'SelfUnit':
+            return 'this unit';
+          case 'Allies':
+            return 'all allies';
+          case 'Enemies':
+            return 'all enemies';
+          case 'All':
+            return 'all units';
+          case 'AlliesOther':
+            return 'all other allies';
+          case 'TriggerSource':
+            return 'the target';
+          case 'Aggressor':
+            return 'the attacker';
+          default:
+            return s;
         }
       };
 
       const describeScopeSingular = (scope: any) => {
         const s = typeof scope === 'string' ? scope : scope?.type || 'unknown';
         switch (s) {
-          case 'SelfUnit': return 'this unit';
-          case 'Allies': return 'ally';
-          case 'Enemies': return 'enemy';
-          case 'All': return 'unit';
-          case 'AlliesOther': return 'other ally';
-          case 'TriggerSource': return 'target';
-          case 'Aggressor': return 'attacker';
-          default: return s;
+          case 'SelfUnit':
+            return 'this unit';
+          case 'Allies':
+            return 'ally';
+          case 'Enemies':
+            return 'enemy';
+          case 'All':
+            return 'unit';
+          case 'AlliesOther':
+            return 'other ally';
+          case 'TriggerSource':
+            return 'target';
+          case 'Aggressor':
+            return 'attacker';
+          default:
+            return s;
         }
       };
 
@@ -154,7 +179,10 @@ export function CardDetailPanel({
           return `a random ${describeScopeSingular(data.scope)}`;
         case 'Standard':
           const { stat, order, count } = data;
-          const orderName = (typeof order === 'string' ? order : order?.type) === 'Ascending' ? 'lowest' : 'highest';
+          const orderName =
+            (typeof order === 'string' ? order : order?.type) === 'Ascending'
+              ? 'lowest'
+              : 'highest';
           const countStr = count === 1 ? 'the' : `the ${count}`;
           return `${countStr} ${orderName} ${typeof stat === 'string' ? stat : stat?.type} ${describeScopeSingular(data.scope)}`;
         case 'Adjacent':
@@ -223,10 +251,11 @@ export function CardDetailPanel({
         {card.abilities.length > 0 && (
           <div className="mb-6">
             {card.abilities.map((ability, index) => (
-              <div key={index} className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                <h3 className="text-md font-bold text-yellow-400 mb-2">
-                  Ability: {ability.name}
-                </h3>
+              <div
+                key={index}
+                className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700"
+              >
+                <h3 className="text-md font-bold text-yellow-400 mb-2">Ability: {ability.name}</h3>
                 <div className="text-xs text-gray-300 mb-2">
                   <strong>Trigger:</strong> {getTriggerDescription(ability.trigger)}
                 </div>
@@ -297,8 +326,9 @@ export function CardDetailPanel({
             <span className="text-blue-400">01.</span> Planning Phase
           </h3>
           <p className="leading-relaxed">
-            Every round, you derive a fresh <strong className="text-white">Hand of 7 cards</strong> from your Bag.
-            The selection is deterministic based on your game seed and the current round.
+            Every round, you derive a fresh <strong className="text-white">Hand of 7 cards</strong>{' '}
+            from your Bag. The selection is deterministic based on your game seed and the current
+            round.
           </p>
           <p className="mt-2 text-gray-400 italic">
             Unused hand cards return to your Bag. The Bag only shrinks when you play or pitch cards.
@@ -310,12 +340,23 @@ export function CardDetailPanel({
             <span className="text-blue-400">02.</span> Mana & Economy
           </h3>
           <p className="leading-relaxed">
-            You start each turn with <strong className="text-blue-400">0 Mana</strong>. Gain mana by <strong className="text-orange-400">Pitching</strong> cards from your hand or units already on your board.
+            You start each turn with <strong className="text-blue-400">0 Mana</strong>. Gain mana by{' '}
+            <strong className="text-orange-400">Pitching</strong> cards from your hand or units
+            already on your board.
           </p>
           <ul className="mt-2 space-y-1 list-disc list-inside text-xs">
-            <li><strong className="text-white">Capacity:</strong> Starts at 3, increases by +1 every round (Max 10).</li>
-            <li><strong className="text-white">Refilling:</strong> You can pitch, spend, and pitch again in one turn.</li>
-            <li><strong className="text-white">Hard Limit:</strong> You cannot hold more than your capacity at once.</li>
+            <li>
+              <strong className="text-white">Capacity:</strong> Starts at 3, increases by +1 every
+              round (Max 10).
+            </li>
+            <li>
+              <strong className="text-white">Refilling:</strong> You can pitch, spend, and pitch
+              again in one turn.
+            </li>
+            <li>
+              <strong className="text-white">Hard Limit:</strong> You cannot hold more than your
+              capacity at once.
+            </li>
           </ul>
         </section>
 
@@ -324,7 +365,8 @@ export function CardDetailPanel({
             <span className="text-blue-400">03.</span> Priority System
           </h3>
           <p className="mb-2 leading-relaxed text-xs">
-            When multiple units share a trigger (e.g. "Battle Start"), the game uses a <strong className="text-white">Priority Queue</strong> to decide who goes first:
+            When multiple units share a trigger (e.g. "Battle Start"), the game uses a{' '}
+            <strong className="text-white">Priority Queue</strong> to decide who goes first:
           </p>
           <div className="bg-black/30 p-3 rounded-lg border border-gray-800 font-mono text-[11px] space-y-2">
             <div className="flex justify-between items-center">
@@ -355,10 +397,14 @@ export function CardDetailPanel({
             <span className="text-blue-400">04.</span> Recursive Logic
           </h3>
           <p className="leading-relaxed">
-            The game state is <strong className="text-white">Live</strong>. If an ability kills a unit or spawns a new one, that unit's "On Death" or "On Spawn" triggers happen <strong className="text-yellow-500">immediately</strong>—even if it interrupts the current priority queue.
+            The game state is <strong className="text-white">Live</strong>. If an ability kills a
+            unit or spawns a new one, that unit's "On Death" or "On Spawn" triggers happen{' '}
+            <strong className="text-yellow-500">immediately</strong>—even if it interrupts the
+            current priority queue.
           </p>
           <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-            Example: If a fast sniper kills a unit with "On Death: Damage", that damage fires before the next unit in the sniper's original phase acts.
+            Example: If a fast sniper kills a unit with "On Death: Damage", that damage fires before
+            the next unit in the sniper's original phase acts.
           </p>
         </section>
 
@@ -367,9 +413,9 @@ export function CardDetailPanel({
             <span className="text-blue-400">05.</span> Victory
           </h3>
           <p className="leading-relaxed text-xs">
-            Battles are automated from <strong className="text-white">Front to Back</strong>.
-            The first team to have all units defeated loses the round.
-            Accumulate <strong className="text-yellow-500">10 Stars</strong> to win the run!
+            Battles are automated from <strong className="text-white">Front to Back</strong>. The
+            first team to have all units defeated loses the round. Accumulate{' '}
+            <strong className="text-yellow-500">10 Stars</strong> to win the run!
           </p>
         </section>
       </div>
@@ -436,30 +482,39 @@ export function CardDetailPanel({
   };
 
   return (
-    <div 
-      className="fixed left-0 bottom-0 w-80 bg-gray-900 border-r border-gray-700 shadow-2xl flex flex-col z-10"
+    <div
+      className="card-detail-panel fixed left-0 bottom-0 w-80 bg-gray-900 border-r border-gray-700 shadow-2xl flex flex-col z-10"
       style={{ top: topOffset }}
     >
       {/* Tabs */}
       <div className="flex border-b border-gray-800">
         <button
           onClick={() => setActiveTab('card')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'card' ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500' : 'text-gray-500 hover:text-gray-300'
-            }`}
+          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+            activeTab === 'card'
+              ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
         >
           Card
         </button>
         <button
           onClick={() => setActiveTab('rules')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'rules' ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500' : 'text-gray-500 hover:text-gray-300'
-            }`}
+          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+            activeTab === 'rules'
+              ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
         >
           Rules
         </button>
         <button
           onClick={() => setActiveTab('mode')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'mode' ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500' : 'text-gray-500 hover:text-gray-300'
-            }`}
+          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+            activeTab === 'mode'
+              ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
         >
           System
         </button>
