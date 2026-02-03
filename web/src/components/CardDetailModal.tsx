@@ -13,8 +13,10 @@ export function CardDetailModal({ card, isOpen, onClose }: CardDetailModalProps)
 
   if (!isOpen) return null;
 
-  const getTriggerDescription = (trigger: string): string => {
-    switch (trigger) {
+  const getTriggerDescription = (trigger: any): string => {
+    const type = typeof trigger === 'string' ? trigger : trigger?.type;
+    
+    switch (type) {
       case 'OnStart':
         return 'Battle Start';
       case 'OnFaint':
@@ -38,7 +40,7 @@ export function CardDetailModal({ card, isOpen, onClose }: CardDetailModalProps)
       case 'AfterAnyAttack':
         return 'After Any Attack';
       default:
-        return trigger;
+        return typeof type === 'string' ? type : 'Unknown';
     }
   };
 
@@ -47,27 +49,37 @@ export function CardDetailModal({ card, isOpen, onClose }: CardDetailModalProps)
       return 'Unknown effect';
     }
 
-    switch (effect.type) {
+    const type = effect.type;
+    const data = effect.value || effect;
+
+    switch (type) {
       case 'Damage':
-        return `Deal ${effect.amount || 0} damage to ${getTargetDescription(effect.target)}`;
+        return `Deal ${data.amount || 0} damage to ${getTargetDescription(data.target)}`;
       case 'ModifyStats':
-        const h = effect.health || 0;
-        const a = effect.attack || 0;
-        return `Give ${a >= 0 ? '+' : ''}${a}/${h >= 0 ? '+' : ''}${h} to ${getTargetDescription(effect.target)}`;
+        const h = data.health || 0;
+        const a = data.attack || 0;
+        return `Give ${a >= 0 ? '+' : ''}${a}/${h >= 0 ? '+' : ''}${h} to ${getTargetDescription(data.target)}`;
       case 'SpawnUnit':
-        return `Spawn a ${effect.template_id ? effect.template_id.replace('_', ' ') : 'unit'}`;
+        const templateId = typeof data.template_id === 'string' 
+          ? data.template_id 
+          : data.template_id?.asText?.() || 'unit';
+        return `Spawn a ${templateId.replace('_', ' ')}`;
       case 'Destroy':
-        return `Destroy ${getTargetDescription(effect.target)}`;
+        return `Destroy ${getTargetDescription(data.target)}`;
       default:
-        return JSON.stringify(effect);
+        return `Effect: ${type}`;
     }
   };
 
   const getTargetDescription = (target: any): string => {
     if (!target || typeof target !== 'object') return 'unknown target';
 
-    const describeScope = (scope: string) => {
-      switch (scope) {
+    const type = target.type;
+    const data = target.value || target.data || target;
+
+    const describeScope = (scope: any) => {
+      const s = typeof scope === 'string' ? scope : scope?.type || 'unknown';
+      switch (s) {
         case 'SelfUnit': return 'this unit';
         case 'Allies': return 'all allies';
         case 'Enemies': return 'all enemies';
@@ -75,12 +87,13 @@ export function CardDetailModal({ card, isOpen, onClose }: CardDetailModalProps)
         case 'AlliesOther': return 'all other allies';
         case 'TriggerSource': return 'the target';
         case 'Aggressor': return 'the attacker';
-        default: return scope;
+        default: return s;
       }
     };
 
-    const describeScopeSingular = (scope: string) => {
-      switch (scope) {
+    const describeScopeSingular = (scope: any) => {
+      const s = typeof scope === 'string' ? scope : scope?.type || 'unknown';
+      switch (s) {
         case 'SelfUnit': return 'this unit';
         case 'Allies': return 'ally';
         case 'Enemies': return 'enemy';
@@ -88,16 +101,17 @@ export function CardDetailModal({ card, isOpen, onClose }: CardDetailModalProps)
         case 'AlliesOther': return 'other ally';
         case 'TriggerSource': return 'target';
         case 'Aggressor': return 'attacker';
-        default: return scope;
+        default: return s;
       }
     };
 
-    switch (target.type) {
+    switch (type) {
       case 'All':
-        return describeScope(target.data.scope);
+        return describeScope(data.scope);
       case 'Position':
-        const { scope, index } = target.data;
-        if (scope === 'SelfUnit') {
+        const { scope, index } = data;
+        const s = typeof scope === 'string' ? scope : scope?.type || 'unknown';
+        if (s === 'SelfUnit') {
           if (index === -1) return 'the unit ahead';
           if (index === 1) return 'the unit behind';
           return 'this unit';
@@ -105,16 +119,16 @@ export function CardDetailModal({ card, isOpen, onClose }: CardDetailModalProps)
         const posName = index === 0 ? 'front' : index === -1 ? 'back' : `slot ${index + 1}`;
         return `the ${posName} ${describeScopeSingular(scope)}`;
       case 'Random':
-        return `a random ${describeScopeSingular(target.data.scope)}`;
+        return `a random ${describeScopeSingular(data.scope)}`;
       case 'Standard':
-        const { stat, order, count } = target.data;
-        const orderName = order === 'Ascending' ? 'lowest' : 'highest';
+        const { stat, order, count } = data;
+        const orderName = (typeof order === 'string' ? order : order?.type) === 'Ascending' ? 'lowest' : 'highest';
         const countStr = count === 1 ? 'the' : `the ${count}`;
-        return `${countStr} ${orderName} ${stat} ${describeScopeSingular(target.data.scope)}`;
+        return `${countStr} ${orderName} ${typeof stat === 'string' ? stat : stat?.type} ${describeScopeSingular(data.scope)}`;
       case 'Adjacent':
-        return `units adjacent to ${describeScope(target.data.scope)}`;
+        return `units adjacent to ${describeScope(data.scope)}`;
       default:
-        return 'unknown';
+        return `Target: ${type}`;
     }
   };
 
