@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMultiplayerStore } from '../store/multiplayerStore';
+import { RotatePrompt } from './RotatePrompt';
 
 export function MultiplayerPage() {
   const navigate = useNavigate();
@@ -147,12 +148,14 @@ export function MultiplayerPage() {
         </div>
       </div>
 
-      <button 
+      <button
         onClick={() => navigate('/')}
         className="mt-8 text-gray-500 hover:text-white underline text-sm"
       >
         ← Back to Main Game
       </button>
+
+      <RotatePrompt />
     </div>
   );
 }

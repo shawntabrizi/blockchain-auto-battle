@@ -8,6 +8,7 @@ import { BattleOverlay } from './BattleOverlay';
 import { BagOverlay } from './BagOverlay';
 import { GameOverScreen } from './GameOverScreen';
 import { UnitCard } from './UnitCard';
+import { RotatePrompt } from './RotatePrompt';
 import { useGameStore } from '../store/gameStore';
 
 export function GameLayout() {
@@ -203,13 +204,7 @@ export function GameLayout() {
         <BattleOverlay />
         <BagOverlay />
 
-        <div className="rotate-prompt hidden" aria-hidden="true">
-          <div className="rotate-prompt__card">
-            <div className="rotate-prompt__icon">⟳</div>
-            <div className="rotate-prompt__title">Rotate your device</div>
-            <div className="rotate-prompt__subtitle">This game plays best in landscape mode.</div>
-          </div>
-        </div>
+        <RotatePrompt />
       </div>
 
       {/* Drag overlay - shows the card being dragged */}

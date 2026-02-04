@@ -10,6 +10,7 @@ import { CardDetailPanel } from './CardDetailPanel';
 import { BagOverlay } from './BagOverlay';
 import { GameOverScreen } from './GameOverScreen';
 import { UnitCard } from './UnitCard';
+import { RotatePrompt } from './RotatePrompt';
 import { Link } from 'react-router-dom';
 
 export const BlockchainPage: React.FC = () => {
@@ -244,63 +245,32 @@ export const BlockchainPage: React.FC = () => {
 
   return (
     <div className="h-screen h-svh bg-board-bg text-slate-200 overflow-hidden font-sans selection:bg-yellow-500/30 flex flex-col">
-      {/* Blockchain Header */}
-      <div className="bg-slate-900/80 border-b border-white/5 px-2 lg:px-6 py-2 lg:py-3 flex items-center justify-between backdrop-blur-md z-50">
-        <div className="flex items-center gap-2 lg:gap-4">
-          <h2 className="font-bold text-yellow-500 text-xs lg:text-base">CHAIN</h2>
-          <div className="flex items-center gap-1 lg:gap-2 px-1.5 lg:px-2 py-0.5 lg:py-1 bg-slate-800 rounded border border-white/5">
-            <div className={`w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full ${blockNumber ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-            <span className="text-[8px] lg:text-[10px] font-mono text-slate-400">
-              {blockNumber !== null ? `#${blockNumber.toLocaleString()}` : 'OFF'}
-            </span>
-          </div>
-          <select
-            value={selectedAccount?.address}
-            onChange={(e) => selectAccount(accounts.find(a => a.address === e.target.value))}
-            className="bg-slate-800 border border-white/10 rounded px-1.5 lg:px-2 py-0.5 lg:py-1 text-xs lg:text-sm outline-none focus:border-yellow-500/50 max-w-[100px] lg:max-w-none"
-          >
-            {accounts.map(acc => (
-              <option key={acc.address} value={acc.address}>
-                {acc.source === 'dev' ? '🛠️ ' : ''}{acc.name} ({acc.address.slice(0, 6)}...)
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 lg:gap-3">
-          {!chainState && (
-            <>
-              <Link
-                to="/blockchain/create-card"
-                className="hidden lg:block text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-4 py-1.5 rounded text-sm transition-all"
-              >
-                Card Creator
-              </Link>
-              <Link
-                to="/blockchain/create-set"
-                className="hidden lg:block text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-4 py-1.5 rounded text-sm transition-all"
-              >
-                Set Creator
-              </Link>
-            </>
-          )}
-          {!chainState && (
-            <button
-              onClick={handleStartGame}
-              disabled={txLoading}
-              className="bg-green-600 hover:bg-green-500 text-white text-xs lg:text-sm font-bold py-1 lg:py-1.5 px-2 lg:px-4 rounded transition-colors disabled:opacity-50"
-            >
-              {txLoading ? '...' : 'NEW GAME'}
-            </button>
-          )}
-          <Link to="/" className="text-[10px] lg:text-xs text-slate-500 hover:text-slate-300">Exit</Link>
-        </div>
-      </div>
-
       {!chainState ? (
         <div className="flex-1 flex items-center justify-center bg-slate-950 p-4">
           <div className="text-center bg-slate-900 p-4 lg:p-8 rounded-2xl lg:rounded-3xl border border-white/5 shadow-2xl w-full max-w-sm lg:max-w-none lg:w-auto">
             <h3 className="text-xl lg:text-2xl font-bold mb-4 lg:mb-6 text-white">Initialize New Session</h3>
+
+            {/* Connection Status & Account */}
+            <div className="flex items-center justify-center gap-3 mb-6 lg:mb-8">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-white/5">
+                <div className={`w-2 h-2 rounded-full ${blockNumber !== null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-xs font-mono text-slate-400">
+                  {blockNumber !== null ? `#${blockNumber.toLocaleString()}` : 'Offline'}
+                </span>
+              </div>
+              <select
+                value={selectedAccount?.address}
+                onChange={(e) => selectAccount(accounts.find(a => a.address === e.target.value))}
+                className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-yellow-500/50"
+              >
+                {accounts.map(acc => (
+                  <option key={acc.address} value={acc.address}>
+                    {acc.source === 'dev' ? '🛠️ ' : ''}{acc.name} ({acc.address.slice(0, 6)}...)
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <p className="text-slate-500 mb-6 lg:mb-8 text-sm lg:text-base">Select a card set to play on the Substrate blockchain.</p>
 
             <div className="flex flex-col gap-3 lg:gap-4 max-w-xs mx-auto mb-6 lg:mb-8">
@@ -318,8 +288,8 @@ export const BlockchainPage: React.FC = () => {
               </select>
             </div>
 
-            {/* Mobile: Show creator links */}
-            <div className="flex gap-2 justify-center mb-6 lg:hidden">
+            {/* Creator links */}
+            <div className="flex gap-2 justify-center mb-6">
               <Link
                 to="/blockchain/create-card"
                 className="text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/10 px-3 py-1.5 rounded text-xs transition-all"
@@ -341,6 +311,8 @@ export const BlockchainPage: React.FC = () => {
             >
               {txLoading ? 'TRANSACTING...' : 'START GAME ON-CHAIN'}
             </button>
+
+            <Link to="/" className="block mt-4 text-slate-500 hover:text-slate-300 text-xs">Back to Menu</Link>
           </div>
         </div>
       ) : (
@@ -365,7 +337,16 @@ export const BlockchainPage: React.FC = () => {
               </div>
             </div>
 
-            <CardDetailPanel card={cardToShow} isVisible={showCardPanel} topOffset="7rem" />
+            <CardDetailPanel
+              card={cardToShow}
+              isVisible={showCardPanel}
+              topOffset="4rem"
+              blockchainMode={true}
+              blockNumber={blockNumber}
+              accounts={accounts}
+              selectedAccount={selectedAccount}
+              onSelectAccount={selectAccount}
+            />
             <BagOverlay />
           </div>
 
@@ -384,6 +365,8 @@ export const BlockchainPage: React.FC = () => {
       {showBattleOverlay && battleOutput && (
         <BattleOverlay />
       )}
+
+      <RotatePrompt />
     </div>
   );
 };

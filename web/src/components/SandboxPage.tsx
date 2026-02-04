@@ -4,6 +4,7 @@ import { useSandboxStore } from '../store/sandboxStore';
 import { UnitCard, EmptySlot } from './UnitCard';
 import { CardDetailPanel } from './CardDetailPanel';
 import { BattleOverlay } from './BattleOverlay';
+import { RotatePrompt } from './RotatePrompt';
 import type { UnitTemplateView } from '../types';
 
 export function SandboxPage() {
@@ -65,6 +66,8 @@ export function SandboxPage() {
 
       {/* Battle Overlay - Sandbox Mode */}
       <BattleOverlay mode="sandbox" />
+
+      <RotatePrompt />
     </div>
   );
 }

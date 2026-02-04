@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useBlockchainStore } from '../store/blockchainStore';
+import { RotatePrompt } from './RotatePrompt';
 
 export function HomePage() {
   const { blockNumber, connect, isConnecting, isConnected } = useBlockchainStore();
@@ -92,14 +93,7 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Portrait rotation prompt */}
-      <div className="rotate-prompt hidden" aria-hidden="true">
-        <div className="rotate-prompt__card">
-          <div className="rotate-prompt__icon">⟳</div>
-          <div className="rotate-prompt__title">Rotate your device</div>
-          <div className="rotate-prompt__subtitle">This game plays best in landscape mode.</div>
-        </div>
-      </div>
+      <RotatePrompt />
     </div>
   );
 }

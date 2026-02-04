@@ -4,12 +4,24 @@ import { useGameStore } from '../store/gameStore';
 import type { CardView } from '../types';
 import { getCardEmoji } from '../utils/emoji';
 
+interface BlockchainAccount {
+  address: string;
+  name?: string;
+  source?: string;
+}
+
 interface CardDetailPanelProps {
   card: CardView | null;
   isVisible: boolean;
   isSandbox?: boolean;
   isReadOnly?: boolean;
   topOffset?: string;
+  // Blockchain props (optional)
+  blockchainMode?: boolean;
+  blockNumber?: number | null;
+  accounts?: BlockchainAccount[];
+  selectedAccount?: BlockchainAccount;
+  onSelectAccount?: (account: BlockchainAccount | undefined) => void;
 }
 
 type TabType = 'card' | 'rules' | 'mode';
@@ -20,6 +32,11 @@ export function CardDetailPanel({
   isSandbox = false,
   isReadOnly = false,
   topOffset = '4rem', // Default top-16 (16 * 0.25rem = 4rem)
+  blockchainMode = false,
+  blockNumber,
+  accounts = [],
+  selectedAccount,
+  onSelectAccount,
 }: CardDetailPanelProps) {
   const [activeTab, setActiveTab] = React.useState<TabType>('card');
   const navigate = useNavigate();
@@ -425,6 +442,42 @@ export function CardDetailPanel({
   const renderModeTab = () => {
     return (
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+        {/* Blockchain Connection Status - only shown in blockchain mode */}
+        {blockchainMode && (
+          <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+            <h3 className="font-bold text-white mb-3">Chain Connection</h3>
+
+            {/* Connection Status */}
+            <div className="flex items-center gap-2 mb-3 p-2 bg-slate-900 rounded border border-white/5">
+              <div className={`w-2 h-2 rounded-full ${blockNumber != null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className="text-xs font-mono text-slate-400">
+                {blockNumber != null ? `Block #${blockNumber.toLocaleString()}` : 'Offline'}
+              </span>
+            </div>
+
+            {/* Account Selector */}
+            {accounts.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-[10px] text-gray-500 uppercase font-bold">Account</label>
+                <select
+                  value={selectedAccount?.address || ''}
+                  onChange={(e) => {
+                    const account = accounts.find(a => a.address === e.target.value);
+                    onSelectAccount?.(account);
+                  }}
+                  className="w-full bg-slate-800 border border-white/10 rounded px-2 py-1.5 text-xs outline-none focus:border-yellow-500/50"
+                >
+                  {accounts.map(acc => (
+                    <option key={acc.address} value={acc.address}>
+                      {acc.source === 'dev' ? '🛠️ ' : ''}{acc.name} ({acc.address.slice(0, 6)}...)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
           <h3 className="font-bold text-white mb-2">Game Mode</h3>
           <div className="space-y-3">
@@ -440,11 +493,19 @@ export function CardDetailPanel({
             >
               Enter Multiplayer Mode
             </button>
+            {!blockchainMode && (
+              <button
+                onClick={() => navigate('/blockchain')}
+                className="w-full btn bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 border border-yellow-700 text-xs py-2"
+              >
+                Enter Blockchain Mode
+              </button>
+            )}
             <button
-              onClick={() => navigate('/blockchain')}
-              className="w-full btn bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 border border-yellow-700 text-xs py-2"
+              onClick={() => navigate('/')}
+              className="w-full btn bg-slate-700/50 hover:bg-slate-600 text-slate-300 border border-slate-600 text-xs py-2"
             >
-              Enter Blockchain Mode
+              Exit to Menu
             </button>
           </div>
         </div>
@@ -490,38 +551,41 @@ export function CardDetailPanel({
       <div className="flex border-b border-gray-800">
         <button
           onClick={() => setActiveTab('card')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+          className={`flex-1 py-2 lg:py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
             activeTab === 'card'
               ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500'
               : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          Card
+          <span className="lg:hidden text-base">🃏</span>
+          <span className="hidden lg:inline">Card</span>
         </button>
         <button
           onClick={() => setActiveTab('rules')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+          className={`flex-1 py-2 lg:py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
             activeTab === 'rules'
               ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500'
               : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          Rules
+          <span className="lg:hidden text-base">📖</span>
+          <span className="hidden lg:inline">Rules</span>
         </button>
         <button
           onClick={() => setActiveTab('mode')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+          className={`flex-1 py-2 lg:py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
             activeTab === 'mode'
               ? 'bg-gray-800 text-yellow-500 border-b-2 border-yellow-500'
               : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          System
+          <span className="lg:hidden text-base">⚙️</span>
+          <span className="hidden lg:inline">System</span>
         </button>
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 p-5 flex flex-col overflow-hidden">
+      <div className="flex-1 p-3 lg:p-5 flex flex-col overflow-hidden">
         {activeTab === 'card' && renderCardTab()}
         {activeTab === 'rules' && renderRulesTab()}
         {activeTab === 'mode' && renderModeTab()}
