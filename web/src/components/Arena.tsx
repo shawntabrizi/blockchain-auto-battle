@@ -2,7 +2,7 @@ import { useGameStore } from '../store/gameStore';
 import { DraggableCard, DroppableBoardSlot, DroppableEmptySlot } from './DndComponents';
 
 export function Arena() {
-  const { view, selection, setSelection, pitchBoardUnit } = useGameStore();
+  const { view, selection, setSelection } = useGameStore();
 
   if (!view) return null;
 
@@ -59,17 +59,6 @@ export function Arena() {
           );
         })}
       </div>
-
-      {selection?.type === 'board' && view.board[selection.index] && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => pitchBoardUnit(selection.index)}
-            className="btn btn-danger text-sm"
-          >
-            Pitch (+{view.board[selection.index]?.pitch_value})
-          </button>
-        </div>
-      )}
     </div>
   );
 }
