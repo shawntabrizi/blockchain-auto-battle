@@ -23,6 +23,7 @@ export function MultiplayerPage() {
   const [copiedId, setCopiedId] = useState(false);
   const [autoJoining, setAutoJoining] = useState(false);
   const [initializing, setInitializing] = useState(false);
+  const [showLargeQR, setShowLargeQR] = useState(false);
 
   // Check if we have a join parameter
   const joinIdFromUrl = searchParams.get('join');
@@ -158,7 +159,11 @@ export function MultiplayerPage() {
                       Scan to Join
                     </div>
                     <div className="flex justify-center mb-1 lg:mb-3">
-                      <div className="bg-white p-1.5 lg:p-2 rounded-lg">
+                      <button
+                        onClick={() => setShowLargeQR(true)}
+                        className="bg-white p-1.5 lg:p-2 rounded-lg cursor-pointer hover:scale-105 transition-transform"
+                        title="Click to enlarge"
+                      >
                         <QRCodeSVG
                           value={joinUrl}
                           size={80}
@@ -171,7 +176,7 @@ export function MultiplayerPage() {
                           className="hidden lg:block"
                           level="M"
                         />
-                      </div>
+                      </button>
                     </div>
                     <button
                       onClick={handleCopyLink}
@@ -254,6 +259,23 @@ export function MultiplayerPage() {
       >
         ← Back to Menu
       </button>
+
+      {/* Large QR Code Modal */}
+      {showLargeQR && (
+        <div
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowLargeQR(false)}
+        >
+          <div className="bg-white p-4 lg:p-6 rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <QRCodeSVG
+              value={joinUrl}
+              size={250}
+              level="M"
+            />
+            <p className="text-center text-gray-600 text-sm mt-3">Tap outside to close</p>
+          </div>
+        </div>
+      )}
 
       <RotatePrompt />
     </div>
