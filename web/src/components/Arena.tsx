@@ -27,9 +27,9 @@ export function Arena() {
   };
 
   return (
-    <div className="arena flex-1 flex flex-col items-center justify-center gap-4 py-4">
-      <div className="board-row flex gap-2">
-        <div className="board-label text-sm text-gray-400 mr-4 self-center">Board</div>
+    <div className="arena flex-1 flex flex-col items-center justify-center lg:justify-end gap-4 py-4 lg:pb-4">
+      <div className="board-label text-sm text-gray-400 mb-2">Board</div>
+      <div className="board-row flex gap-3 lg:gap-4">
         {Array.from({ length: 5 }).map((_, displayIndex) => {
           const arrayIndex = 4 - displayIndex;
           const unit = view.board[arrayIndex];

@@ -288,7 +288,7 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
       return (
         <div
           key={`${team}-empty-${displayIndex}`}
-          className="w-[4.5rem] h-24 lg:w-24 lg:h-32 rounded border border-gray-600 bg-gray-800/50 flex items-center justify-center"
+          className="w-[4.5rem] h-24 lg:w-32 lg:h-44 rounded border border-gray-600 bg-gray-800/50 flex items-center justify-center"
         >
           <span className="text-gray-600 text-xs">-</span>
         </div>

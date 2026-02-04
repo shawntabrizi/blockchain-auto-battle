@@ -182,6 +182,7 @@ function SandboxArena() {
             }}
             showCost={false}
             showPitch={false}
+            compact={true}
           />
           <div className="absolute -top-1.5 lg:-top-2 left-1/2 -translate-x-1/2 text-[8px] lg:text-xs text-gray-400 pointer-events-none">
             {displayIndex}
@@ -199,6 +200,7 @@ function SandboxArena() {
           onClick={onClick}
           label={`${displayIndex}`}
           isTarget={selectedTemplate !== null}
+          compact={true}
         />
       </div>
     );
@@ -291,6 +293,7 @@ function UnitGallery() {
               selectedTemplate?.template_id === template.template_id ? null : template
             )
           }
+          compact={true}
         />
       ))}
     </div>

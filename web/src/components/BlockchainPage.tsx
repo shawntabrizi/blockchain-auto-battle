@@ -328,13 +328,11 @@ export const BlockchainPage: React.FC = () => {
               }}
             />
 
-            <div className={`flex-1 flex flex-col overflow-hidden relative ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
-              <div className="flex-1 overflow-hidden relative">
-                <Arena />
-              </div>
-              <div className="flex-shrink-0">
-                <Shop />
-              </div>
+            <div className={`flex-1 flex flex-col overflow-hidden min-h-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
+              <Arena />
+            </div>
+            <div className={`flex-shrink-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
+              <Shop />
             </div>
 
             <CardDetailPanel

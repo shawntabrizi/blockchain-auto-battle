@@ -38,7 +38,7 @@ export function Shop() {
   };
 
   return (
-    <div className="shop h-48 bg-shop-bg border-t-2 border-gray-600 flex-shrink-0">
+    <div className="shop h-48 lg:h-56 bg-shop-bg border-t-2 border-gray-600 flex-shrink-0">
       <div className="flex h-full">
         {/* Left: Ash Pile */}
         <DroppableAshPile onHoverChange={setIsAshHovered}>
@@ -71,7 +71,7 @@ export function Shop() {
             <span className="text-xs text-gray-500">({view.bag_count} in draw pool)</span>
           </div>
 
-          <div className="hand-row flex gap-3">
+          <div className="hand-row flex gap-3 lg:gap-4">
             {view.hand
               .map((card, i) => ({ card, index: i }))
               .filter(({ card }) => card) // Only show non-null cards (not yet used)
