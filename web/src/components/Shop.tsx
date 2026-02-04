@@ -3,7 +3,7 @@ import React from 'react';
 import { DraggableCard, DroppableAshPile } from './DndComponents';
 
 export function Shop() {
-  const { view, selection, setSelection, pitchHandCard, pitchBoardUnit } = useGameStore();
+  const { view, selection, setSelection, pitchHandCard, pitchBoardUnit, undo } = useGameStore();
   const [isAshHovered, setIsAshHovered] = React.useState(false);
 
   if (!view) return null;
@@ -61,6 +61,17 @@ export function Shop() {
             <div className="ash-hint text-[10px] text-gray-500 mt-2 text-center px-2">
               {isAshHovered ? 'BURN IT!' : 'Drop to Pitch'}
             </div>
+            <button
+              onClick={undo}
+              disabled={!view.can_undo}
+              className={`mt-2 px-3 py-1 text-xs rounded border transition-all ${
+                view.can_undo
+                  ? 'bg-gray-700 border-gray-500 text-gray-200 hover:bg-gray-600 cursor-pointer'
+                  : 'bg-gray-800 border-gray-700 text-gray-600 cursor-not-allowed'
+              }`}
+            >
+              Undo
+            </button>
           </div>
         </DroppableAshPile>
 

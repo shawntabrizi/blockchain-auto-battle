@@ -36,6 +36,15 @@ pub struct BattleOutput {
     pub initial_enemy_units: Vec<UnitView>,
 }
 
+/// Snapshot of turn state for undo functionality
+#[derive(Clone)]
+struct TurnSnapshot {
+    mana: i32,
+    hand_used: Vec<bool>,
+    action_log: Vec<TurnAction>,
+    board: Vec<Option<BoardUnit>>,
+}
+
 /// The main game engine exposed to WASM
 #[wasm_bindgen]
 pub struct GameEngine {
@@ -47,6 +56,7 @@ pub struct GameEngine {
     hand_used: Vec<bool>,                // true = pitched or played
     action_log: Vec<TurnAction>,         // Ordered list of actions taken this turn
     start_board: Vec<Option<BoardUnit>>, // board state at the start of the turn
+    undo_history: Vec<TurnSnapshot>,     // Stack of snapshots for undo
 }
 
 #[wasm_bindgen]
@@ -68,6 +78,7 @@ impl GameEngine {
             hand_used: Vec::new(),
             action_log: Vec::new(),
             start_board: vec![None; BOARD_SIZE],
+            undo_history: Vec::new(),
         };
 
         // Only initialize fully if a seed was actually provided (manual local start)
@@ -136,7 +147,8 @@ impl GameEngine {
     #[wasm_bindgen]
     pub fn get_view(&self) -> JsValue {
         log::debug("get_view", "Serializing game state to view");
-        let view = GameView::from_state(&self.state, self.current_mana, &self.hand_used);
+        let can_undo = !self.undo_history.is_empty();
+        let view = GameView::from_state(&self.state, self.current_mana, &self.hand_used, can_undo);
         match serde_wasm_bindgen::to_value(&view) {
             Ok(val) => val,
             Err(e) => {
@@ -208,6 +220,7 @@ impl GameEngine {
 
         let pitch_value = self.get_card(*card_id).economy.pitch_value;
 
+        self.save_snapshot();
         self.current_mana = (self.current_mana + pitch_value).min(self.state.mana_limit);
         self.hand_used[hand_index] = true;
         self.action_log.push(TurnAction::PitchFromHand {
@@ -259,6 +272,7 @@ impl GameEngine {
             ));
         }
 
+        self.save_snapshot();
         self.current_mana -= play_cost;
         self.hand_used[hand_index] = true;
         self.action_log.push(TurnAction::PlayFromHand {
@@ -294,6 +308,7 @@ impl GameEngine {
             return Err("Invalid board slot".to_string());
         }
 
+        self.save_snapshot();
         self.state.board.swap(slot_a, slot_b);
         self.action_log.push(TurnAction::SwapBoard {
             slot_a: slot_a as u32,
@@ -310,12 +325,19 @@ impl GameEngine {
             return Err("Can only pitch during shop phase".to_string());
         }
 
+        // Check slot is occupied before saving snapshot
+        if self.state.board.get(board_slot).map(|s| s.is_none()).unwrap_or(true) {
+            return Err("Board slot is empty".to_string());
+        }
+
+        self.save_snapshot();
+
         let unit = self
             .state
             .board
             .get_mut(board_slot)
             .and_then(|s| s.take())
-            .ok_or("Board slot is empty")?;
+            .expect("Board slot should be occupied");
 
         let card_id = unit.card_id;
         let pitch_value = self.get_card(card_id).economy.pitch_value;
@@ -323,6 +345,28 @@ impl GameEngine {
         self.action_log.push(TurnAction::PitchFromBoard {
             board_slot: board_slot as u32,
         });
+
+        self.log_state();
+        Ok(())
+    }
+
+    /// Undo the last action taken this turn
+    #[wasm_bindgen]
+    pub fn undo(&mut self) -> Result<(), String> {
+        log::action("undo", "Reverting to previous state");
+        if self.state.phase != GamePhase::Shop {
+            return Err("Can only undo during shop phase".to_string());
+        }
+
+        let snapshot = self
+            .undo_history
+            .pop()
+            .ok_or("Nothing to undo")?;
+
+        self.current_mana = snapshot.mana;
+        self.hand_used = snapshot.hand_used;
+        self.action_log = snapshot.action_log;
+        self.state.board = snapshot.board;
 
         self.log_state();
         Ok(())
@@ -520,6 +564,16 @@ impl GameEngine {
         // log::debug("STATE", &format!("{:?}", self.state));
     }
 
+    /// Save current state to undo history before making a change
+    fn save_snapshot(&mut self) {
+        self.undo_history.push(TurnSnapshot {
+            mana: self.current_mana,
+            hand_used: self.hand_used.clone(),
+            action_log: self.action_log.clone(),
+            board: self.state.board.clone(),
+        });
+    }
+
     fn initialize_bag(&mut self) {
         self.state.local_state.bag.clear();
         self.state.card_pool.clear();
@@ -554,6 +608,7 @@ impl GameEngine {
         self.action_log = Vec::new();
         self.start_board = self.state.board.clone();
         self.current_mana = 0;
+        self.undo_history.clear();
     }
 
     fn run_battle(&mut self) {

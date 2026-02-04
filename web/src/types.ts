@@ -76,6 +76,7 @@ export interface GameView {
   // Note: bag is removed from hot path - use fetchBag() for full bag data
   bag_count: number;
   can_afford: boolean[];
+  can_undo: boolean;
 }
 
 //--- NEW BATTLE REPLAY TYPES ---

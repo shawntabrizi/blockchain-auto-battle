@@ -10,6 +10,7 @@ interface GameEngine {
   play_hand_card: (handIndex: number, boardSlot: number) => void;
   swap_board_positions: (slotA: number, slotB: number) => void;
   pitch_board_unit: (boardSlot: number) => void;
+  undo: () => void;
   end_turn: () => void;
   continue_after_battle: () => void;
   new_run: () => void;
@@ -53,6 +54,7 @@ interface GameStore {
   playHandCard: (handIndex: number, boardSlot: number) => void;
   swapBoardPositions: (slotA: number, slotB: number) => void;
   pitchBoardUnit: (boardSlot: number) => void;
+  undo: () => void;
   endTurn: () => void;
   continueAfterBattle: () => void;
   newRun: () => void;
@@ -150,6 +152,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!engine) return;
     try {
       engine.pitch_board_unit(boardSlot);
+      set({ view: engine.get_view(), selection: null });
+    } catch (err) { console.error(err); }
+  },
+
+  undo: () => {
+    const { engine } = get();
+    if (!engine) return;
+    try {
+      engine.undo();
       set({ view: engine.get_view(), selection: null });
     } catch (err) { console.error(err); }
   },

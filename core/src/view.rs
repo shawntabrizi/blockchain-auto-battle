@@ -80,11 +80,13 @@ pub struct GameView {
     pub bag_count: u32,
     /// Whether we can afford each hand card
     pub can_afford: Vec<bool>,
+    /// Whether undo is available
+    pub can_undo: bool,
 }
 
 impl GameView {
     /// Construct a GameView from state plus transient per-turn data
-    pub fn from_state(state: &GameState, current_mana: i32, hand_used: &[bool]) -> Self {
+    pub fn from_state(state: &GameState, current_mana: i32, hand_used: &[bool], can_undo: bool) -> Self {
         let hand: Vec<Option<CardView>> = state
             .hand
             .iter()
@@ -144,6 +146,7 @@ impl GameView {
             },
             bag_count: state.bag.len() as u32,
             can_afford,
+            can_undo,
         }
     }
 }
