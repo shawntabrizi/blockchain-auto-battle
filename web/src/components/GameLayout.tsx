@@ -181,7 +181,7 @@ export function GameLayout() {
   const activeCard = getActiveCard();
 
   return (
-    <DndContext sensors={sensors} modifiers={[restrictToGameLayout]} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} modifiers={[restrictToGameLayout]} onDragStart={handleDragStart} onDragEnd={handleDragEnd} autoScroll={false}>
       <div ref={gameLayoutRef} className="game-layout h-screen flex flex-col bg-board-bg">
         {/* Zone 1: Top HUD */}
         <HUD />
