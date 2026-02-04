@@ -22,6 +22,10 @@ export function MultiplayerManager() {
   
   const { startMultiplayerGame, resolveMultiplayerBattle, view, engine } = useGameStore();
 
+  // Guards to prevent double-execution in React StrictMode
+  const hostGameStarted = useRef(false);
+  const guestGameStarted = useRef(false);
+
   // Handle incoming messages
   useEffect(() => {
     if (!conn) return;
@@ -59,7 +63,9 @@ export function MultiplayerManager() {
 
   // Host starts game when connected and engine is ready
   useEffect(() => {
+      if (hostGameStarted.current) return;
       if (isHost && status === 'connected' && !gameSeed && engine) {
+          hostGameStarted.current = true;
           addLog("Host: Starting game session...");
           const seed = Math.floor(Math.random() * 1000000);
           setGameSeed(seed);
@@ -71,7 +77,9 @@ export function MultiplayerManager() {
 
   // Guest starts game when they have a seed (possibly received while on /multiplayer) and engine is ready
   useEffect(() => {
+      if (guestGameStarted.current) return;
       if (!isHost && gameSeed !== null && engine && status === 'in-game') {
+          guestGameStarted.current = true;
           addLog("Guest: Starting game with received seed...");
           startMultiplayerGame(gameSeed);
       }
