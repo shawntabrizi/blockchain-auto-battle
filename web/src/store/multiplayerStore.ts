@@ -110,8 +110,13 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
           });
       });
 
-      conn.on('data', (_data) => {
-           // We'll let the MultiplayerManager handle the routing of data
+      conn.on('data', (data: any) => {
+           // Handle START_GAME here to capture the seed even if MultiplayerManager hasn't mounted
+           if (data && typeof data === 'object' && data.type === 'START_GAME') {
+               get().addLog(`Received START_GAME with seed ${data.seed}`);
+               set({ gameSeed: data.seed, status: 'in-game' });
+           }
+           // Other messages are handled by MultiplayerManager
       });
 
       conn.on('close', () => {

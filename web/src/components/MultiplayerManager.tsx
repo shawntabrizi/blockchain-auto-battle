@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMultiplayerStore } from '../store/multiplayerStore';
 import { useGameStore } from '../store/gameStore';
 
@@ -20,7 +20,7 @@ export function MultiplayerManager() {
       setIsReady
   } = useMultiplayerStore();
   
-  const { startMultiplayerGame, resolveMultiplayerBattle, view } = useGameStore();
+  const { startMultiplayerGame, resolveMultiplayerBattle, view, engine } = useGameStore();
 
   // Handle incoming messages
   useEffect(() => {
@@ -35,10 +35,8 @@ export function MultiplayerManager() {
                 break;
                 
             case 'START_GAME':
-                addLog(`Starting game with seed ${data.seed}`);
-                setGameSeed(data.seed);
-                startMultiplayerGame(data.seed);
-                setStatus('in-game');
+                // Seed and status are now handled by the store's data handler
+                // The useEffect below will call startMultiplayerGame when engine is ready
                 break;
                 
             case 'END_TURN_READY':
@@ -59,9 +57,9 @@ export function MultiplayerManager() {
     };
   }, [conn]);
 
-  // Host starts game when connected
+  // Host starts game when connected and engine is ready
   useEffect(() => {
-      if (isHost && status === 'connected' && !gameSeed) {
+      if (isHost && status === 'connected' && !gameSeed && engine) {
           addLog("Host: Starting game session...");
           const seed = Math.floor(Math.random() * 1000000);
           setGameSeed(seed);
@@ -69,7 +67,15 @@ export function MultiplayerManager() {
           sendMessage({ type: 'START_GAME', seed });
           setStatus('in-game');
       }
-  }, [isHost, status, gameSeed]);
+  }, [isHost, status, gameSeed, engine]);
+
+  // Guest starts game when they have a seed (possibly received while on /multiplayer) and engine is ready
+  useEffect(() => {
+      if (!isHost && gameSeed !== null && engine && status === 'in-game') {
+          addLog("Guest: Starting game with received seed...");
+          startMultiplayerGame(gameSeed);
+      }
+  }, [isHost, gameSeed, engine, status]);
 
   // Trigger battle when both ready
   useEffect(() => {

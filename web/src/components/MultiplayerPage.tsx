@@ -67,7 +67,7 @@ export function MultiplayerPage() {
   };
 
   const handleGoToGame = () => {
-    navigate('/');
+    navigate('/multiplayer/game');
   };
 
   const handleCopyLink = () => {
