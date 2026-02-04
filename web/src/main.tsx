@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
 import App from './App.tsx';
+import { HomePage } from './components/HomePage.tsx';
 import { SandboxPage } from './components/SandboxPage.tsx';
 import { MultiplayerPage } from './components/MultiplayerPage.tsx';
 import { BlockchainPage } from './components/BlockchainPage.tsx';
@@ -13,7 +14,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
       <Routes>
-        <Route path="/" element={<App />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/local" element={<App />} />
         <Route path="/sandbox" element={<SandboxPage />} />
         <Route path="/multiplayer" element={<MultiplayerPage />} />
         <Route path="/blockchain" element={<BlockchainPage />} />

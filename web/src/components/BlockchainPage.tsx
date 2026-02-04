@@ -237,7 +237,7 @@ export const BlockchainPage: React.FC = () => {
         >
           {isConnecting ? 'CONNECTING...' : 'CONNECT WALLET'}
         </button>
-        <Link to="/" className="mt-6 lg:mt-8 text-slate-400 hover:text-white underline text-sm">Back to Local Game</Link>
+        <Link to="/" className="mt-6 lg:mt-8 text-slate-400 hover:text-white underline text-sm">Back to Menu</Link>
       </div>
     );
   }
