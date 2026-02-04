@@ -317,7 +317,7 @@ export const BlockchainPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <DndContext sensors={sensors} modifiers={[restrictToGameLayout]} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} modifiers={[restrictToGameLayout]} onDragStart={handleDragStart} onDragEnd={handleDragEnd} autoScroll={false}>
           <div ref={gameLayoutRef} className="flex-1 relative flex flex-col min-h-0">
             <HUD
               hideEndTurn={true}

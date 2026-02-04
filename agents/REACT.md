@@ -17,8 +17,28 @@ The frontend is a React application built with Vite and Tailwind CSS.
 - **Feedback**: Use `react-hot-toast` for transaction feedback and validation errors.
 
 ## Patterns
-- **Drag and Drop**: Native HTML5 DnD is used for placing cards on the board.
+- **Drag and Drop**: Uses `@dnd-kit/core` for placing cards on the board.
 - **Asset Handling**: Centralize emoji mappings in `utils/emoji.ts` for consistent unit representation.
+
+## IMPORTANT: DndContext autoScroll Must Be Disabled
+
+All `<DndContext>` components MUST include `autoScroll={false}` to prevent scroll issues on mobile and touch devices. Without this, dragging cards causes unwanted page scrolling.
+
+```tsx
+<DndContext
+  sensors={sensors}
+  modifiers={[restrictToGameLayout]}
+  onDragStart={handleDragStart}
+  onDragEnd={handleDragEnd}
+  autoScroll={false}  // REQUIRED - prevents scroll issues
+>
+```
+
+**Components using DndContext:**
+- `GameLayout.tsx` - main game UI
+- `BlockchainPage.tsx` - blockchain game mode
+
+**Rule:** Every `<DndContext>` MUST have `autoScroll={false}`.
 
 ## CRITICAL: Preventing WASM Memory Issues with useRef Guards
 
