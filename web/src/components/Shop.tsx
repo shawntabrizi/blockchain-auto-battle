@@ -38,51 +38,34 @@ export function Shop() {
   };
 
   return (
-    <div className="shop h-48 lg:h-56 bg-shop-bg border-t-2 border-gray-600 flex-shrink-0">
+    <div className="shop h-32 lg:h-60 bg-shop-bg border-t-2 border-gray-600 flex-shrink-0">
       <div className="flex h-full">
-        {/* Left: Ash Pile */}
-        <DroppableAshPile onHoverChange={setIsAshHovered}>
-          <div
-            className={`shop-side w-32 h-full flex flex-col items-center justify-center border-r border-gray-700 transition-colors duration-200 ${
-              isAshHovered ? 'bg-red-900/30' : ''
-            }`}
+        {/* Left: Undo Button */}
+        <div className="shop-side w-20 lg:w-32 h-full flex flex-col items-center justify-center">
+          <button
+            onClick={undo}
+            disabled={!view.can_undo}
+            className={`action-circle w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all border-2 ${view.can_undo
+                ? 'bg-gradient-to-br from-gray-600 to-gray-700 border-gray-400/50 text-white hover:from-gray-500 hover:to-gray-600 cursor-pointer shadow-gray-900/50 hover:shadow-gray-700/70'
+                : 'bg-gray-800 border-gray-700 text-gray-600 cursor-not-allowed'
+              }`}
+            title="Undo last action"
           >
-            <div className="ash-label text-sm text-gray-400 mb-2">Ash Pile</div>
-            <div
-              className={`ash-circle w-16 h-16 rounded-full bg-gradient-to-br from-red-900 to-orange-800 flex items-center justify-center text-2xl shadow-lg transition-all cursor-pointer border-2 border-orange-500/50 ${
-                isAshHovered
-                  ? 'shadow-red-400/80 scale-110 ring-4 ring-red-400/30'
-                  : 'shadow-red-900/50 hover:shadow-red-700/70'
-              }`}
-              onClick={handleAshClick}
-            >
-              🔥
-            </div>
-            <div className="ash-hint text-[10px] text-gray-500 mt-2 text-center px-2">
-              {isAshHovered ? 'BURN IT!' : 'Drop to Pitch'}
-            </div>
-            <button
-              onClick={undo}
-              disabled={!view.can_undo}
-              className={`mt-2 px-3 py-1 text-xs rounded border transition-all ${
-                view.can_undo
-                  ? 'bg-gray-700 border-gray-500 text-gray-200 hover:bg-gray-600 cursor-pointer'
-                  : 'bg-gray-800 border-gray-700 text-gray-600 cursor-not-allowed'
-              }`}
-            >
-              Undo
-            </button>
-          </div>
-        </DroppableAshPile>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+              <path fillRule="evenodd" d="M9.53 2.47a.75.75 0 0 1 0 1.06L4.81 8.25H15a6.75 6.75 0 0 1 0 13.5h-3a.75.75 0 0 1 0-1.5h3a5.25 5.25 0 1 0 0-10.5H4.81l4.72 4.72a.75.75 0 1 1-1.06 1.06l-6-6a.75.75 0 0 1 0-1.06l6-6a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <div className="text-[10px] text-gray-500 mt-2">Undo</div>
+        </div>
 
         {/* Center: Hand */}
-        <div className="shop-hand flex-1 flex flex-col items-center justify-center">
-          <div className="flex items-center gap-1 mb-2">
-            <span className="text-sm text-gray-400 hidden lg:inline">Hand</span>
-            <span className="text-xs text-gray-500 hidden lg:inline">({view.bag_count} in draw pool)</span>
+        <div className="shop-hand flex-1 flex flex-col items-center justify-center overflow-hidden relative">
+          {/* Hand label - desktop only */}
+          <div className="hidden lg:flex absolute top-3 left-1/2 -translate-x-1/2 items-center gap-2">
+            <span className="text-sm text-gray-400">Hand</span>
+            <span className="text-xs text-gray-500">({view.bag_count} in deck)</span>
           </div>
-
-          <div className="hand-row flex gap-3 lg:gap-4">
+          <div className="hand-row flex gap-2 lg:gap-4 lg:mt-4">
             {view.hand.map((card, i) =>
               card ? (
                 <DraggableCard
@@ -107,27 +90,25 @@ export function Shop() {
           </div>
         </div>
 
-        {/* Right: Mana Tank */}
-        <div className="shop-side w-32 flex flex-col items-center justify-center border-l border-gray-700">
-          <div className="mana-label text-sm text-gray-400 mb-2">Mana</div>
-          <div className="mana-container relative w-16 h-24 bg-gray-900 rounded-lg border-2 border-mana-blue mana-tank overflow-hidden">
-            {/* Mana level */}
+        {/* Right: Ash Pile */}
+        <DroppableAshPile onHoverChange={setIsAshHovered}>
+          <div
+            className={`shop-side w-20 lg:w-32 h-full flex flex-col items-center justify-center transition-colors duration-200 ${isAshHovered ? 'bg-red-900/30' : ''}`}
+          >
             <div
-              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-mana-blue to-blue-400 transition-all duration-300"
-              style={{
-                height: `${(view.mana / view.mana_limit) * 100}%`,
-              }}
-            />
-            {/* Level text */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              {/* Mobile: show mana/limit */}
-              <span className="mana-text text-sm font-bold text-white drop-shadow-lg lg:hidden">{view.mana}/{view.mana_limit}</span>
-              {/* Desktop: show just mana */}
-              <span className="mana-text text-xl font-bold text-white drop-shadow-lg hidden lg:block">{view.mana}</span>
+              className={`action-circle w-16 h-16 rounded-full bg-gradient-to-br from-red-900 to-orange-800 flex items-center justify-center shadow-lg transition-all cursor-pointer border-2 border-orange-500/50 ${isAshHovered
+                  ? 'shadow-red-400/80 scale-110 ring-4 ring-red-400/30'
+                  : 'shadow-red-900/50 hover:shadow-red-700/70'
+                }`}
+              onClick={handleAshClick}
+            >
+              <span className="text-2xl">🔥</span>
+            </div>
+            <div className="text-[10px] text-gray-500 mt-2 text-center px-2">
+              {isAshHovered ? 'BURN IT!' : 'Ash Pile'}
             </div>
           </div>
-          <div className="mana-limit text-xs text-gray-400 mt-1">Limit: {view.mana_limit}</div>
-        </div>
+        </DroppableAshPile>
       </div>
     </div>
   );

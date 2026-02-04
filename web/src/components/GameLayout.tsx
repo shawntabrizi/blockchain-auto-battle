@@ -2,6 +2,7 @@ import { DndContext, DragEndEvent, TouchSensor, MouseSensor, useSensor, useSenso
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { HUD } from './HUD';
 import { Arena } from './Arena';
+import { ManaBar } from './ManaBar';
 import { Shop } from './Shop';
 import { CardDetailPanel } from './CardDetailPanel';
 import { BattleOverlay } from './BattleOverlay';
@@ -192,7 +193,12 @@ export function GameLayout() {
           <Arena />
         </div>
 
-        {/* Zone 3: Command Deck (Shop) */}
+        {/* Zone 3: Mana Bar (gateway between board and hand) */}
+        <div className={`flex-shrink-0 ${showCardPanel ? 'ml-44 lg:ml-80 show-card-panel' : ''}`}>
+          <ManaBar />
+        </div>
+
+        {/* Zone 4: Command Deck (Shop) */}
         <div className={`game-shop flex-shrink-0 mt-auto ${showCardPanel ? 'ml-44 lg:ml-80 show-card-panel' : ''}`}>
           <Shop />
         </div>

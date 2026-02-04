@@ -237,13 +237,10 @@ body {
   }
 
   .shop {
-    height: 8.5rem;
+    height: 7rem;
     flex-shrink: 0;
   }
 
-  .shop-side {
-    width: 3.5rem;
-  }
 
   .shop-hand {
     padding: 0.25rem 0;

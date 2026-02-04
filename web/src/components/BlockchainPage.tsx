@@ -3,6 +3,7 @@ import { DndContext, DragEndEvent, TouchSensor, MouseSensor, useSensor, useSenso
 import { useBlockchainStore } from '../store/blockchainStore';
 import { useGameStore } from '../store/gameStore';
 import { Arena } from './Arena';
+import { ManaBar } from './ManaBar';
 import { Shop } from './Shop';
 import { HUD } from './HUD';
 import { BattleOverlay } from './BattleOverlay';
@@ -330,6 +331,9 @@ export const BlockchainPage: React.FC = () => {
 
             <div className={`flex-1 flex flex-col overflow-hidden min-h-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
               <Arena />
+            </div>
+            <div className={`flex-shrink-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
+              <ManaBar />
             </div>
             <div className={`flex-shrink-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
               <Shop />
