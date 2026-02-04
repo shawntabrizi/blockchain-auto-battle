@@ -1,17 +1,14 @@
-import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useBlockchainStore } from '../store/blockchainStore';
 import { RotatePrompt } from './RotatePrompt';
+import { useInitGuard } from '../hooks';
 
 export function HomePage() {
   const { blockNumber, connect, isConnecting, isConnected } = useBlockchainStore();
-  const connectAttempted = useRef(false);
 
   // Try to connect to blockchain on mount to check availability
-  useEffect(() => {
-    if (connectAttempted.current || isConnected) return;
-    connectAttempted.current = true;
-
+  useInitGuard(() => {
+    if (isConnected) return;
     // Silently try to connect - if it fails, blockNumber stays null
     connect().catch(() => {
       // Blockchain not available - that's okay

@@ -1,17 +1,11 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { DndContext, DragEndEvent, TouchSensor, MouseSensor, useSensor, useSensors, DragOverlay, Modifier } from '@dnd-kit/core';
+import React, { useEffect, useState, useRef } from 'react';
 import { useBlockchainStore } from '../store/blockchainStore';
 import { useGameStore } from '../store/gameStore';
-import { Arena } from './Arena';
-import { ManaBar } from './ManaBar';
-import { Shop } from './Shop';
-import { HUD } from './HUD';
-import { BattleOverlay } from './BattleOverlay';
-import { CardDetailPanel } from './CardDetailPanel';
-import { BagOverlay } from './BagOverlay';
 import { GameOverScreen } from './GameOverScreen';
-import { UnitCard } from './UnitCard';
+import { GameShell } from './GameShell';
+import { BattleOverlay } from './BattleOverlay';
 import { RotatePrompt } from './RotatePrompt';
+import { useInitGuard } from '../hooks';
 import { Link } from 'react-router-dom';
 
 export const BlockchainPage: React.FC = () => {
@@ -26,7 +20,6 @@ export const BlockchainPage: React.FC = () => {
     blockNumber,
     startGame,
     refreshGameState,
-    submitTurnOnChain,
     availableSets,
     fetchSets
   } = useBlockchainStore();
@@ -35,141 +28,21 @@ export const BlockchainPage: React.FC = () => {
     init,
     engine,
     view,
-    bag,
-    cardSet,
     showBattleOverlay,
     endTurn,
     battleOutput,
-    selection,
-    showBag,
-    playHandCard,
-    swapBoardPositions,
-    pitchHandCard,
-    pitchBoardUnit,
-    setSelection
   } = useGameStore();
+
+  const { submitTurnOnChain } = useBlockchainStore();
 
   const [txLoading, setTxLoading] = useState(false);
   const [selectedSetId, setSelectedSetId] = useState(0);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const gameLayoutRef = useRef<HTMLDivElement>(null);
 
-  // Custom modifier to restrict dragging to the game layout container
-  const restrictToGameLayout: Modifier = useCallback(({ transform, draggingNodeRect }) => {
-    if (!gameLayoutRef.current || !draggingNodeRect) {
-      return transform;
-    }
-
-    const layoutRect = gameLayoutRef.current.getBoundingClientRect();
-
-    const minX = layoutRect.left - draggingNodeRect.left;
-    const maxX = layoutRect.right - draggingNodeRect.right;
-    const minY = layoutRect.top - draggingNodeRect.top;
-    const maxY = layoutRect.bottom - draggingNodeRect.bottom;
-
-    return {
-      ...transform,
-      x: Math.min(Math.max(transform.x, minX), maxX),
-      y: Math.min(Math.max(transform.y, minY), maxY),
-    };
-  }, []);
-
-  // Configure sensors for both mouse and touch
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: {
-      distance: 5,
-    },
-  });
-  const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: {
-      delay: 100,
-      tolerance: 5,
-    },
-  });
-  const sensors = useSensors(mouseSensor, touchSensor);
-
-  // Handle drag end
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    const activeData = active.data.current;
-    const overData = over.data.current;
-
-    if (!activeData || !overData) return;
-
-    const sourceType = activeData.type as string;
-    const sourceIndex = activeData.index as number;
-    const destType = overData.type as string;
-
-    if (destType === 'ash-pile') {
-      if (sourceType === 'hand') {
-        pitchHandCard(sourceIndex);
-      } else if (sourceType === 'board') {
-        pitchBoardUnit(sourceIndex);
-      }
-      setSelection(null);
-      return;
-    }
-
-    if (destType === 'board-slot') {
-      const destIndex = overData.index as number;
-
-      if (sourceType === 'hand') {
-        playHandCard(sourceIndex, destIndex);
-      } else if (sourceType === 'board' && sourceIndex !== destIndex) {
-        swapBoardPositions(sourceIndex, destIndex);
-      }
-      setSelection(null);
-    }
-  };
-
-  const handleDragStart = (event: { active: { id: string | number } }) => {
-    setActiveId(String(event.active.id));
-    const [type, indexStr] = String(event.active.id).split('-');
-    const index = parseInt(indexStr);
-    if (type === 'hand' || type === 'board') {
-      setSelection({ type: type as 'hand' | 'board', index });
-    }
-  };
-
-  // Prevent body scroll during drag
-  useEffect(() => {
-    if (activeId) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-    };
-  }, [activeId]);
-
-  // Get the card being dragged for the overlay
-  const getActiveCard = () => {
-    if (!activeId || !view) return null;
-    const [type, indexStr] = activeId.split('-');
-    const index = parseInt(indexStr);
-    if (type === 'hand') {
-      return view.hand[index];
-    } else if (type === 'board') {
-      return view.board[index];
-    }
-    return null;
-  };
-
-  // Guards to prevent double-execution in React StrictMode
-  const initCalled = useRef(false);
+  // Guard for refresh to prevent double-call
   const refreshCalled = useRef(false);
 
-  useEffect(() => {
-    if (initCalled.current) return;
-    initCalled.current = true;
+  // Initialize WASM engine and fetch sets
+  useInitGuard(() => {
     init();
     if (isConnected) {
       fetchSets();
@@ -198,28 +71,12 @@ export const BlockchainPage: React.FC = () => {
     try {
       // 1. Locally end turn to generate the BattleOutput for playback
       endTurn();
-
       // 2. Submit the actions to the chain
       await submitTurnOnChain();
     } finally {
       setTxLoading(false);
     }
   };
-
-  // Logic for CardDetailPanel
-  const showCardPanel = view?.phase === 'shop' || (selection?.type === 'board') || showBag;
-  const selectedCard =
-    (view?.phase === 'shop' && selection?.type === 'hand' && view?.hand[selection!.index])
-      ? view.hand[selection!.index]!
-      : (selection?.type === 'bag' && bag?.[selection!.index])
-        ? cardSet?.find(c => c.id === bag[selection!.index])
-        : null;
-
-  const selectedBoardUnit = selection?.type === 'board' && view?.board[selection!.index]
-    ? view.board[selection!.index]!
-    : null;
-
-  const cardToShow = selectedCard || selectedBoardUnit;
 
   // Show game over screen
   if (view?.phase === 'victory' || view?.phase === 'defeat') {
@@ -244,9 +101,9 @@ export const BlockchainPage: React.FC = () => {
     );
   }
 
-  return (
-    <div className="h-screen h-svh bg-board-bg text-slate-200 overflow-hidden font-sans selection:bg-yellow-500/30 flex flex-col">
-      {!chainState ? (
+  if (!chainState) {
+    return (
+      <div className="h-screen h-svh bg-board-bg text-slate-200 overflow-hidden font-sans selection:bg-yellow-500/30 flex flex-col">
         <div className="flex-1 flex items-center justify-center bg-slate-950 p-4">
           <div className="text-center bg-slate-900 p-4 lg:p-8 rounded-2xl lg:rounded-3xl border border-white/5 shadow-2xl w-full max-w-sm lg:max-w-none lg:w-auto">
             <h3 className="text-xl lg:text-2xl font-bold mb-4 lg:mb-6 text-white">Initialize New Session</h3>
@@ -316,54 +173,30 @@ export const BlockchainPage: React.FC = () => {
             <Link to="/" className="block mt-4 text-slate-500 hover:text-slate-300 text-xs">Back to Menu</Link>
           </div>
         </div>
-      ) : (
-        <DndContext sensors={sensors} modifiers={[restrictToGameLayout]} onDragStart={handleDragStart} onDragEnd={handleDragEnd} autoScroll={false}>
-          <div ref={gameLayoutRef} className="flex-1 relative flex flex-col min-h-0">
-            <HUD
-              hideEndTurn={true}
-              customAction={{
-                label: txLoading ? 'Submitting...' : 'Commit',
-                onClick: handleSubmitTurn,
-                disabled: txLoading,
-                variant: 'chain',
-              }}
-            />
+        <RotatePrompt />
+      </div>
+    );
+  }
 
-            <div className={`flex-1 flex flex-col overflow-hidden min-h-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
-              <Arena />
-            </div>
-            <div className={`flex-shrink-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
-              <ManaBar />
-            </div>
-            <div className={`flex-shrink-0 ${showCardPanel ? 'ml-44 lg:ml-80' : ''}`}>
-              <Shop />
-            </div>
+  // Game is active - render the game shell with blockchain customizations
+  return (
+    <div className="h-screen h-svh bg-board-bg text-slate-200 overflow-hidden font-sans selection:bg-yellow-500/30 flex flex-col">
+      <GameShell
+        hideEndTurn={true}
+        customAction={{
+          label: txLoading ? 'Submitting...' : 'Commit',
+          onClick: handleSubmitTurn,
+          disabled: txLoading,
+          variant: 'chain',
+        }}
+        blockchainMode={true}
+        blockNumber={blockNumber}
+        accounts={accounts}
+        selectedAccount={selectedAccount}
+        onSelectAccount={selectAccount}
+      />
 
-            <CardDetailPanel
-              card={cardToShow}
-              isVisible={showCardPanel}
-              topOffset="4rem"
-              blockchainMode={true}
-              blockNumber={blockNumber}
-              accounts={accounts}
-              selectedAccount={selectedAccount}
-              onSelectAccount={selectAccount}
-            />
-            <BagOverlay />
-          </div>
-
-          <DragOverlay>
-            {getActiveCard() ? (
-              <UnitCard
-                card={getActiveCard()!}
-                showCost={activeId?.startsWith('hand')}
-                showPitch={true}
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
-
+      {/* Battle Overlay - shown on top when battle is active */}
       {showBattleOverlay && battleOutput && (
         <BattleOverlay />
       )}

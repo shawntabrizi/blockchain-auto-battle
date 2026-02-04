@@ -4,19 +4,34 @@ import { useGameStore } from '../store/gameStore';
 import type { CardView } from '../types';
 import { getCardEmoji } from '../utils/emoji';
 
-interface BlockchainAccount {
+// Blockchain account type
+export interface BlockchainAccount {
   address: string;
   name?: string;
   source?: string;
 }
 
-interface CardDetailPanelProps {
+// Discriminated union for panel modes
+export type CardDetailPanelMode =
+  | { type: 'standard' }
+  | { type: 'sandbox' }
+  | { type: 'readOnly' }
+  | {
+      type: 'blockchain';
+      blockNumber: number | null;
+      accounts: BlockchainAccount[];
+      selectedAccount?: BlockchainAccount;
+      onSelectAccount?: (account: BlockchainAccount | undefined) => void;
+    };
+
+export interface CardDetailPanelProps {
   card: CardView | null;
   isVisible: boolean;
+  mode?: CardDetailPanelMode;
+  topOffset?: string;
+  // Legacy props for backwards compatibility - prefer using mode
   isSandbox?: boolean;
   isReadOnly?: boolean;
-  topOffset?: string;
-  // Blockchain props (optional)
   blockchainMode?: boolean;
   blockNumber?: number | null;
   accounts?: BlockchainAccount[];
@@ -29,9 +44,11 @@ type TabType = 'card' | 'rules' | 'mode';
 export function CardDetailPanel({
   card,
   isVisible,
+  mode,
+  topOffset = '4rem',
+  // Legacy props
   isSandbox = false,
   isReadOnly = false,
-  topOffset = '4rem', // Default top-16 (16 * 0.25rem = 4rem)
   blockchainMode = false,
   blockNumber,
   accounts = [],
@@ -50,12 +67,32 @@ export function CardDetailPanel({
     toggleShowRawJson,
   } = useGameStore();
 
+  // Normalize mode from legacy props if not provided
+  const resolvedMode: CardDetailPanelMode = mode ?? (
+    isSandbox
+      ? { type: 'sandbox' }
+      : isReadOnly
+        ? { type: 'readOnly' }
+        : blockchainMode
+          ? {
+              type: 'blockchain',
+              blockNumber: blockNumber ?? null,
+              accounts,
+              selectedAccount,
+              onSelectAccount,
+            }
+          : { type: 'standard' }
+  );
+
   if (!isVisible) return null;
 
   // Get the selected hand/board index for actions
   const selectedHandIndex = selection?.type === 'hand' ? selection.index : -1;
   const selectedBoardIndex = selection?.type === 'board' ? selection.index : -1;
   const isBoardUnit = selection?.type === 'board';
+
+  // Check if actions should be disabled
+  const isActionDisabled = resolvedMode.type === 'sandbox' || resolvedMode.type === 'readOnly';
 
   const renderCardTab = () => {
     if (!card) {
@@ -212,7 +249,7 @@ export function CardDetailPanel({
     return (
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
         {/* Action Buttons */}
-        {!isSandbox && !isReadOnly && (
+        {!isActionDisabled && (
           <div className="mb-3 lg:mb-6 space-y-1.5 lg:space-y-2">
             {isBoardUnit ? (
               // Board unit actions
@@ -440,34 +477,36 @@ export function CardDetailPanel({
   };
 
   const renderModeTab = () => {
+    const isBlockchain = resolvedMode.type === 'blockchain';
+
     return (
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
         {/* Blockchain Connection Status - only shown in blockchain mode */}
-        {blockchainMode && (
+        {isBlockchain && (
           <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
             <h3 className="font-bold text-white mb-3">Chain Connection</h3>
 
             {/* Connection Status */}
             <div className="flex items-center gap-2 mb-3 p-2 bg-slate-900 rounded border border-white/5">
-              <div className={`w-2 h-2 rounded-full ${blockNumber != null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              <div className={`w-2 h-2 rounded-full ${resolvedMode.blockNumber != null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
               <span className="text-xs font-mono text-slate-400">
-                {blockNumber != null ? `Block #${blockNumber.toLocaleString()}` : 'Offline'}
+                {resolvedMode.blockNumber != null ? `Block #${resolvedMode.blockNumber.toLocaleString()}` : 'Offline'}
               </span>
             </div>
 
             {/* Account Selector */}
-            {accounts.length > 0 && (
+            {resolvedMode.accounts.length > 0 && (
               <div className="space-y-2">
                 <label className="text-[10px] text-gray-500 uppercase font-bold">Account</label>
                 <select
-                  value={selectedAccount?.address || ''}
+                  value={resolvedMode.selectedAccount?.address || ''}
                   onChange={(e) => {
-                    const account = accounts.find(a => a.address === e.target.value);
-                    onSelectAccount?.(account);
+                    const account = resolvedMode.accounts.find(a => a.address === e.target.value);
+                    resolvedMode.onSelectAccount?.(account);
                   }}
                   className="w-full bg-slate-800 border border-white/10 rounded px-2 py-1.5 text-xs outline-none focus:border-yellow-500/50"
                 >
-                  {accounts.map(acc => (
+                  {resolvedMode.accounts.map(acc => (
                     <option key={acc.address} value={acc.address}>
                       {acc.source === 'dev' ? '🛠️ ' : ''}{acc.name} ({acc.address.slice(0, 6)}...)
                     </option>
@@ -493,7 +532,7 @@ export function CardDetailPanel({
             >
               Enter Multiplayer Mode
             </button>
-            {!blockchainMode && (
+            {!isBlockchain && (
               <button
                 onClick={() => navigate('/blockchain')}
                 className="w-full btn bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 border border-yellow-700 text-xs py-2"

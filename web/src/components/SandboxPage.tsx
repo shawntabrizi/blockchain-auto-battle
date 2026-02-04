@@ -1,24 +1,20 @@
-import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSandboxStore } from '../store/sandboxStore';
 import { UnitCard, EmptySlot } from './UnitCard';
 import { CardDetailPanel } from './CardDetailPanel';
 import { BattleOverlay } from './BattleOverlay';
 import { RotatePrompt } from './RotatePrompt';
+import { useInitGuard } from '../hooks';
 import type { UnitTemplateView } from '../types';
 
 export function SandboxPage() {
   const init = useSandboxStore((state) => state.init);
-  const initCalled = useRef(false);
   const selectedTemplate = useSandboxStore((state) => state.selectedTemplate);
+  const isLoading = useSandboxStore((state) => state.isLoading);
 
-  useEffect(() => {
-    if (initCalled.current) return;
-    initCalled.current = true;
+  useInitGuard(() => {
     init();
   }, [init]);
-
-  const isLoading = useSandboxStore((state) => state.isLoading);
 
   // Convert selectedTemplate to CardView format for CardDetailPanel
   const selectedCard = selectedTemplate ? {
