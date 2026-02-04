@@ -187,13 +187,13 @@ export function GameLayout() {
 
         {/* Zone 2: Arena (Board) with left panel */}
         <div
-          className={`game-main flex-1 flex flex-col overflow-hidden min-h-0 ${showCardPanel ? 'ml-80 show-card-panel' : ''}`}
+          className={`game-main flex-1 flex flex-col overflow-hidden min-h-0 ${showCardPanel ? 'ml-44 lg:ml-80 show-card-panel' : ''}`}
         >
           <Arena />
         </div>
 
         {/* Zone 3: Command Deck (Shop) */}
-        <div className={`game-shop flex-shrink-0 mt-auto ${showCardPanel ? 'ml-80 show-card-panel' : ''}`}>
+        <div className={`game-shop flex-shrink-0 mt-auto ${showCardPanel ? 'ml-44 lg:ml-80 show-card-panel' : ''}`}>
           <Shop />
         </div>
 

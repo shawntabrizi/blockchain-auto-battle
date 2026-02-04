@@ -60,11 +60,11 @@ export function CardDetailPanel({
   const renderCardTab = () => {
     if (!card) {
       return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="text-4xl mb-4">👆</div>
-          <h3 className="text-lg font-bold text-gray-300 mb-2">Select a Card</h3>
-          <p className="text-sm text-gray-400">
-            Click on any card in your hand or board to view its detailed information.
+        <div className="flex flex-col items-center justify-center py-6 lg:py-12 text-center">
+          <div className="text-2xl lg:text-4xl mb-2 lg:mb-4">👆</div>
+          <h3 className="text-sm lg:text-lg font-bold text-gray-300 mb-1 lg:mb-2">Select a Card</h3>
+          <p className="text-[10px] lg:text-sm text-gray-400">
+            Tap any card to view details.
           </p>
         </div>
       );
@@ -213,7 +213,7 @@ export function CardDetailPanel({
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
         {/* Action Buttons */}
         {!isSandbox && !isReadOnly && (
-          <div className="mb-6 space-y-2">
+          <div className="mb-3 lg:mb-6 space-y-1.5 lg:space-y-2">
             {isBoardUnit ? (
               // Board unit actions
               <button
@@ -223,9 +223,9 @@ export function CardDetailPanel({
                     setSelection(null); // Clear selection after pitching
                   }
                 }}
-                className="w-full btn btn-danger text-sm"
+                className="w-full btn btn-danger text-[10px] lg:text-sm py-1.5 lg:py-2"
               >
-                Pitch Board Unit (+{card.pitch_value} mana)
+                Pitch (+{card.pitch_value})
               </button>
             ) : (
               // Hand card actions
@@ -237,9 +237,9 @@ export function CardDetailPanel({
                       setSelection(null); // Clear selection after pitching
                     }
                   }}
-                  className="w-full btn btn-danger text-sm"
+                  className="w-full btn btn-danger text-[10px] lg:text-sm py-1.5 lg:py-2"
                 >
-                  Pitch (+{card.pitch_value} mana)
+                  Pitch (+{card.pitch_value})
                 </button>
               </>
             )}
@@ -247,17 +247,17 @@ export function CardDetailPanel({
         )}
 
         {/* Card Basic Info */}
-        <div className="card-info flex items-center gap-4 mb-6">
-          <div className="card-emoji w-20 h-20 bg-gray-800 rounded-xl border-2 border-gray-700 flex items-center justify-center text-4xl shadow-inner">
+        <div className="card-info flex items-center gap-2 lg:gap-4 mb-3 lg:mb-6">
+          <div className="card-emoji w-12 h-12 lg:w-20 lg:h-20 bg-gray-800 rounded-lg lg:rounded-xl border-2 border-gray-700 flex items-center justify-center text-2xl lg:text-4xl shadow-inner flex-shrink-0">
             {getCardEmoji(card.template_id)}
           </div>
-          <div className="card-stats">
-            <h2 className="card-name text-2xl font-bold text-white leading-tight">{card.name}</h2>
-            <div className="flex gap-2 mt-1">
-              <span className="px-2 py-0.5 bg-red-900/50 text-red-400 border border-red-800 rounded text-xs font-bold">
+          <div className="card-stats min-w-0">
+            <h2 className="card-name text-base lg:text-2xl font-bold text-white leading-tight truncate">{card.name}</h2>
+            <div className="flex gap-1 lg:gap-2 mt-1">
+              <span className="px-1.5 lg:px-2 py-0.5 bg-red-900/50 text-red-400 border border-red-800 rounded text-[10px] lg:text-xs font-bold">
                 ATK: {card.attack}
               </span>
-              <span className="px-2 py-0.5 bg-green-900/50 text-green-400 border border-green-800 rounded text-xs font-bold">
+              <span className="px-1.5 lg:px-2 py-0.5 bg-green-900/50 text-green-400 border border-green-800 rounded text-[10px] lg:text-xs font-bold">
                 HP: {card.health}
               </span>
             </div>
@@ -266,26 +266,26 @@ export function CardDetailPanel({
 
         {/* Ability Section */}
         {card.abilities.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-3 lg:mb-6">
             {card.abilities.map((ability, index) => (
               <div
                 key={index}
-                className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700"
+                className="mb-2 lg:mb-4 p-2 lg:p-3 bg-gray-800/50 rounded-lg border border-gray-700"
               >
-                <h3 className="text-md font-bold text-yellow-400 mb-2">Ability: {ability.name}</h3>
-                <div className="text-xs text-gray-300 mb-2">
+                <h3 className="text-xs lg:text-md font-bold text-yellow-400 mb-1 lg:mb-2">{ability.name}</h3>
+                <div className="text-[10px] lg:text-xs text-gray-300 mb-1 lg:mb-2">
                   <strong>Trigger:</strong> {getTriggerDescription(ability.trigger)}
                 </div>
                 {ability.max_triggers && (
-                  <div className="text-xs text-orange-400 mb-2">
-                    <strong>Max Triggers:</strong> {ability.max_triggers}
+                  <div className="text-[10px] lg:text-xs text-orange-400 mb-1 lg:mb-2">
+                    <strong>Max:</strong> {ability.max_triggers}
                   </div>
                 )}
-                <div className="text-sm text-gray-200 bg-gray-900/50 p-2 rounded border border-gray-700/50 italic">
+                <div className="text-[10px] lg:text-sm text-gray-200 bg-gray-900/50 p-1.5 lg:p-2 rounded border border-gray-700/50 italic">
                   "{ability.description}"
                 </div>
-                <div className="mt-2 text-xs text-blue-400 font-semibold">
-                  Result: {getEffectDescription(ability.effect)}
+                <div className="mt-1 lg:mt-2 text-[10px] lg:text-xs text-blue-400 font-semibold">
+                  {getEffectDescription(ability.effect)}
                 </div>
               </div>
             ))}
@@ -293,17 +293,17 @@ export function CardDetailPanel({
         )}
 
         {/* Economy Section */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="p-3 bg-blue-900/20 border border-blue-800/50 rounded-lg">
-            <div className="text-[10px] text-blue-400 uppercase font-bold mb-1">Play Cost</div>
-            <div className="text-xl font-bold text-white flex items-center gap-1">
-              {card.play_cost} <span className="text-blue-400 text-sm">Mana</span>
+        <div className="grid grid-cols-2 gap-1.5 lg:gap-3 mb-3 lg:mb-6">
+          <div className="p-1.5 lg:p-3 bg-blue-900/20 border border-blue-800/50 rounded-lg">
+            <div className="text-[8px] lg:text-[10px] text-blue-400 uppercase font-bold mb-0.5 lg:mb-1">Cost</div>
+            <div className="text-sm lg:text-xl font-bold text-white flex items-center gap-0.5 lg:gap-1">
+              {card.play_cost} <span className="text-blue-400 text-[10px] lg:text-sm">Mana</span>
             </div>
           </div>
-          <div className="p-3 bg-orange-900/20 border border-orange-800/50 rounded-lg">
-            <div className="text-[10px] text-orange-400 uppercase font-bold mb-1">Pitch Value</div>
-            <div className="text-xl font-bold text-white flex items-center gap-1">
-              +{card.pitch_value} <span className="text-orange-400 text-sm">Mana</span>
+          <div className="p-1.5 lg:p-3 bg-orange-900/20 border border-orange-800/50 rounded-lg">
+            <div className="text-[8px] lg:text-[10px] text-orange-400 uppercase font-bold mb-0.5 lg:mb-1">Pitch</div>
+            <div className="text-sm lg:text-xl font-bold text-white flex items-center gap-0.5 lg:gap-1">
+              +{card.pitch_value} <span className="text-orange-400 text-[10px] lg:text-sm">Mana</span>
             </div>
           </div>
         </div>
@@ -544,7 +544,7 @@ export function CardDetailPanel({
 
   return (
     <div
-      className="card-detail-panel fixed left-0 bottom-0 w-80 bg-gray-900 border-r border-gray-700 shadow-2xl flex flex-col z-10"
+      className="card-detail-panel fixed left-0 bottom-0 w-44 lg:w-80 bg-gray-900 border-r border-gray-700 shadow-2xl flex flex-col z-10"
       style={{ top: topOffset }}
     >
       {/* Tabs */}

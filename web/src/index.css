@@ -14,14 +14,17 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  min-height: 100svh; /* Small viewport height - accounts for mobile URL bar */
-  overscroll-behavior: none; /* Prevent pull-to-refresh */
+  min-height: 100svh;
+  /* Small viewport height - accounts for mobile URL bar */
+  overscroll-behavior: none;
+  /* Prevent pull-to-refresh */
 }
 
 #root {
   width: 100%;
   height: 100vh;
-  height: 100svh; /* Small viewport height - accounts for mobile URL bar */
+  height: 100svh;
+  /* Small viewport height - accounts for mobile URL bar */
 }
 
 /* Prevent unwanted touch behaviors during drag */
@@ -71,10 +74,12 @@ body {
 
 /* Mana tank animation */
 @keyframes mana-glow {
+
   0%,
   100% {
     box-shadow: 0 0 10px rgba(74, 144, 217, 0.5);
   }
+
   50% {
     box-shadow: 0 0 20px rgba(74, 144, 217, 0.8);
   }
@@ -86,13 +91,16 @@ body {
 
 /* Battle animation */
 @keyframes shake {
+
   0%,
   100% {
     transform: translateX(0);
   }
+
   25% {
     transform: translateX(-5px);
   }
+
   75% {
     transform: translateX(5px);
   }
@@ -103,10 +111,12 @@ body {
 }
 
 @keyframes damage-flash {
+
   0%,
   100% {
     filter: brightness(1);
   }
+
   50% {
     filter: brightness(2) saturate(0);
   }
@@ -120,23 +130,30 @@ body {
   .clash-bump-right {
     animation: bump-right 0.3s ease-out;
   }
+
   .clash-bump-left {
     animation: bump-left 0.3s ease-out;
   }
+
   @keyframes bump-right {
+
     0%,
     100% {
       transform: translateX(0);
     }
+
     50% {
       transform: translateX(10px);
     }
   }
+
   @keyframes bump-left {
+
     0%,
     100% {
       transform: translateX(0);
     }
+
     50% {
       transform: translateX(-10px);
     }
@@ -145,11 +162,13 @@ body {
   .animate-float-up {
     animation: float-up 0.8s ease-out forwards;
   }
+
   @keyframes float-up {
     0% {
       transform: translateY(0) scale(1);
       opacity: 1;
     }
+
     100% {
       transform: translateY(-40px) scale(1.2);
       opacity: 0;
@@ -159,12 +178,15 @@ body {
   .animate-fade-in-out {
     animation: fade-in-out 0.8s ease-out forwards;
   }
+
   @keyframes fade-in-out {
+
     0%,
     100% {
       opacity: 0;
       transform: translateY(0);
     }
+
     20%,
     80% {
       opacity: 1;
@@ -240,7 +262,7 @@ body {
     gap: 0.5rem;
   }
 
-  .hand-row > * {
+  .hand-row>* {
     scroll-snap-align: center;
   }
 
@@ -340,7 +362,7 @@ body {
     gap: 0.5rem;
   }
 
-  .card-detail-panel .grid > div {
+  .card-detail-panel .grid>div {
     padding: 0.375rem;
   }
 
@@ -387,6 +409,61 @@ body {
 
   .mana-limit {
     display: none;
+  }
+
+  /* Sandbox arena - smaller cards on mobile */
+  .sandbox-slot .unit-card {
+    width: 3rem;
+    height: 4rem;
+  }
+
+  .sandbox-slot .unit-card .card-emoji {
+    font-size: 1rem;
+  }
+
+  .sandbox-slot .unit-card .card-stats {
+    font-size: 0.5rem;
+    gap: 0.125rem;
+    padding: 0.125rem;
+  }
+
+  .sandbox-slot .unit-card .card-name {
+    font-size: 0.4rem;
+  }
+
+  .sandbox-slot .empty-slot {
+    width: 3rem;
+    height: 4rem;
+  }
+
+  /* Sandbox gallery - compact cards on mobile */
+  .sandbox-gallery .unit-card {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3/4;
+    min-height: 0;
+    padding: 1rem 0.125rem 0.125rem 0.125rem;
+  }
+
+  .sandbox-gallery .unit-card .card-name {
+    display: none;
+  }
+
+  .sandbox-gallery .unit-card .card-emoji {
+    font-size: 1rem;
+  }
+
+  .sandbox-gallery .unit-card .card-stats {
+    font-size: 0.55rem;
+    gap: 0.125rem;
+    padding: 0.125rem;
+  }
+
+  .sandbox-gallery .unit-card .cost-badge,
+  .sandbox-gallery .unit-card .pitch-badge {
+    width: 0.625rem;
+    height: 0.625rem;
+    font-size: 0.375rem;
   }
 }
 
