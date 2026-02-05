@@ -5,7 +5,6 @@
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 
@@ -175,6 +174,8 @@ struct TriggerPriority {
     health: i32,
     unit_position: usize,
     ability_order: usize,
+    /// Random value assigned per-trigger for fair tiebreaking (from seed)
+    tiebreaker: u32,
 }
 
 /// Trigger struct with support for location-based spawning
@@ -404,21 +405,31 @@ fn resolve_trigger_queue<R: BattleRng>(
     // Trigger Priority:
     // 1. Attack (Highest First) -> Ascending Sort
     // 2. Health (Highest First) -> Ascending Sort
-    // 3. Team (Player First)    -> Player > Enemy
-    // 4. Position (Front First) -> Descending Sort (Index 1 < Index 0 so 0 ends up at back)
+    // 3. Position (Front First) -> Descending Sort (Index 1 < Index 0 so 0 ends up at back)
+    // 4. Random Tiebreaker      -> Per-unit value based on seed + unit ID (fair cross-team tiebreaker)
     // 5. Ability Order          -> Descending Sort (First ability ends up at back)
     // Pop takes from the end.
+    //
+    // IMPORTANT: Tiebreaker comes BEFORE ability_order so that once a unit "wins" priority,
+    // ALL of its abilities resolve before moving to the next unit. This prevents interleaving
+    // abilities from different units with the same stats/position.
+
+    // Assign tiebreaker to each trigger based on seed + unit identity.
+    // We rotate the ID before XORing to ensure the team bit (bit 31) mixes with
+    // different bits of the random base, preventing consistent team bias.
+    let random_base = rng.next_u32();
+    for trigger in queue.iter_mut() {
+        // Rotate ID by 16 bits so team bit (31) moves to bit 15, mixing fairly with random_base
+        trigger.priority.tiebreaker = random_base ^ trigger.source_id.raw().rotate_left(16);
+    }
+
     queue.sort_by(|a, b| {
         a.priority
             .attack
             .cmp(&b.priority.attack)
             .then(a.priority.health.cmp(&b.priority.health))
-            .then_with(|| match (a.team, b.team) {
-                (Team::Enemy, Team::Player) => Ordering::Less,
-                (Team::Player, Team::Enemy) => Ordering::Greater,
-                _ => Ordering::Equal,
-            })
             .then(b.priority.unit_position.cmp(&a.priority.unit_position))
+            .then(a.priority.tiebreaker.cmp(&b.priority.tiebreaker))
             .then(b.priority.ability_order.cmp(&a.priority.ability_order))
     });
 
@@ -581,6 +592,7 @@ fn resolve_trigger_queue<R: BattleRng>(
                                 health: unit.effective_health(),
                                 unit_position: idx_in_team,
                                 ability_order: sub_idx,
+                                tiebreaker: 0, // Assigned before sorting
                             },
                             is_from_dead: is_fatal, // ALLOW execution if it died from this damage
                             spawn_index_override: if is_fatal { Some(idx_in_team) } else { None },
@@ -625,6 +637,7 @@ fn resolve_trigger_queue<R: BattleRng>(
                                 health: dead_unit.effective_health(),
                                 unit_position: index,
                                 ability_order: sub_idx,
+                                tiebreaker: 0, // Assigned before sorting
                             },
                             is_from_dead: true,
                             spawn_index_override: Some(index), // Remember where it died!
@@ -655,6 +668,7 @@ fn resolve_trigger_queue<R: BattleRng>(
                                 health: survivor.effective_health(),
                                 unit_position: s_idx,
                                 ability_order: sub_idx,
+                                tiebreaker: 0, // Assigned before sorting
                             },
                             is_from_dead: false,
                             spawn_index_override: None,
@@ -685,6 +699,7 @@ fn resolve_trigger_queue<R: BattleRng>(
                                 health: survivor.effective_health(),
                                 unit_position: s_idx,
                                 ability_order: sub_idx,
+                                tiebreaker: 0, // Assigned before sorting
                             },
                             is_from_dead: false,
                             spawn_index_override: None,
@@ -878,6 +893,7 @@ fn apply_ability_effect<R: BattleRng>(
                                 health: my_board[safe_idx].effective_health(),
                                 unit_position: safe_idx,
                                 ability_order: sub_idx,
+                                tiebreaker: 0, // Assigned before sorting
                             },
                             is_from_dead: false,
                             spawn_index_override: None,
@@ -906,6 +922,7 @@ fn apply_ability_effect<R: BattleRng>(
                                     health: unit.effective_health(),
                                     unit_position: i,
                                     ability_order: sub_idx,
+                                    tiebreaker: 0, // Assigned before sorting
                                 },
                                 is_from_dead: false,
                                 spawn_index_override: None,
@@ -941,6 +958,7 @@ fn apply_ability_effect<R: BattleRng>(
                                     health: unit.effective_health(),
                                     unit_position: i,
                                     ability_order: sub_idx,
+                                    tiebreaker: 0, // Assigned before sorting
                                 },
                                 is_from_dead: false,
                                 spawn_index_override: None,
@@ -1108,6 +1126,7 @@ fn collect_and_resolve_triggers<R: BattleRng>(
                             health: u.effective_health(),
                             unit_position: i,
                             ability_order: sub_idx,
+                            tiebreaker: 0, // Assigned before sorting
                         },
                         is_from_dead: false,
                         spawn_index_override: None,
@@ -1267,6 +1286,7 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
                                 health: u.effective_health(),
                                 unit_position: current_idx,
                                 ability_order: sub_idx,
+                                tiebreaker: 0, // Assigned before sorting
                             },
                             is_from_dead: is_dead,
                             spawn_index_override: if is_dead { Some(current_idx) } else { None },
@@ -1319,6 +1339,7 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
                         health: u.effective_health(),
                         unit_position: idx,
                         ability_order: sub_idx,
+                        tiebreaker: 0, // Assigned before sorting
                     },
                     is_from_dead: true,
                     spawn_index_override: Some(idx),
@@ -1343,6 +1364,7 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
                             health: survivor.effective_health(),
                             unit_position: s_idx,
                             ability_order: sub_idx,
+                            tiebreaker: 0, // Assigned before sorting
                         },
                         is_from_dead: false,
                         spawn_index_override: None,
@@ -1374,6 +1396,7 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
                         health: u.effective_health(),
                         unit_position: idx,
                         ability_order: sub_idx,
+                        tiebreaker: 0, // Assigned before sorting
                     },
                     is_from_dead: true,
                     spawn_index_override: Some(idx),
@@ -1398,6 +1421,7 @@ fn resolve_hurt_and_faint_loop<R: BattleRng>(
                             health: survivor.effective_health(),
                             unit_position: s_idx,
                             ability_order: sub_idx,
+                            tiebreaker: 0, // Assigned before sorting
                         },
                         is_from_dead: false,
                         spawn_index_override: None,
