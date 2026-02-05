@@ -22,6 +22,7 @@ interface MultiplayerState {
   isReady: boolean;
   opponentReady: boolean;
   gameSeed: number | null;
+  battleTimer: number | null;  // Countdown seconds when opponent is waiting
   
   // Actions
   initializePeer: () => Promise<string>;
@@ -37,6 +38,7 @@ interface MultiplayerState {
   setIsReady: (ready: boolean) => void;
   setGameSeed: (seed: number) => void;
   setStatus: (status: ConnectionStatus) => void;
+  setBattleTimer: (seconds: number | null) => void;
 }
 
 export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
@@ -52,6 +54,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   isReady: false,
   opponentReady: false,
   gameSeed: null,
+  battleTimer: null,
 
   initializePeer: async () => {
     const existingPeer = get().peer;
@@ -157,6 +160,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   setIsReady: (ready: boolean) => set({ isReady: ready }),
   setGameSeed: (seed: number) => set({ gameSeed: seed }),
   setStatus: (status: ConnectionStatus) => set({ status }),
+  setBattleTimer: (seconds: number | null) => set({ battleTimer: seconds }),
 
   reset: () => {
       const { peer } = get();
@@ -172,7 +176,8 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
           opponentBoard: null,
           isReady: false,
           opponentReady: false,
-          gameSeed: null
+          gameSeed: null,
+          battleTimer: null
       });
   }
 }));

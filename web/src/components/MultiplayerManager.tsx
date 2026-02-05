@@ -2,29 +2,34 @@ import { useEffect, useRef } from 'react';
 import { useMultiplayerStore } from '../store/multiplayerStore';
 import { useGameStore } from '../store/gameStore';
 
+const BATTLE_TIMER_SECONDS = 20;
+
 export function MultiplayerManager() {
-  const { 
-      conn, 
-      isHost, 
+  const {
+      conn,
+      isHost,
       status,
-      sendMessage, 
-      addLog, 
-      setOpponentReady, 
-      setOpponentBoard, 
-      isReady, 
-      opponentReady, 
+      sendMessage,
+      addLog,
+      setOpponentReady,
+      setOpponentBoard,
+      isReady,
+      opponentReady,
       opponentBoard,
       gameSeed,
       setGameSeed,
       setStatus,
-      setIsReady
+      setIsReady,
+      battleTimer,
+      setBattleTimer
   } = useMultiplayerStore();
-  
+
   const { startMultiplayerGame, resolveMultiplayerBattle, view, engine } = useGameStore();
 
   // Guards to prevent double-execution in React StrictMode
   const hostGameStarted = useRef(false);
   const guestGameStarted = useRef(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle incoming messages
   useEffect(() => {
@@ -84,6 +89,54 @@ export function MultiplayerManager() {
           startMultiplayerGame(gameSeed);
       }
   }, [isHost, gameSeed, engine, status]);
+
+  // Start timer when opponent is ready but we're not
+  useEffect(() => {
+      // Only start timer if opponent is ready, we're not ready, and we're in shop phase
+      if (opponentReady && !isReady && view?.phase === 'shop') {
+          // Start the countdown
+          addLog(`Opponent is waiting! You have ${BATTLE_TIMER_SECONDS} seconds to submit.`);
+          setBattleTimer(BATTLE_TIMER_SECONDS);
+
+          timerRef.current = setInterval(() => {
+              const currentTimer = useMultiplayerStore.getState().battleTimer;
+              if (currentTimer !== null && currentTimer > 1) {
+                  setBattleTimer(currentTimer - 1);
+              } else {
+                  // Timer expired - auto-submit
+                  if (timerRef.current) {
+                      clearInterval(timerRef.current);
+                      timerRef.current = null;
+                  }
+                  setBattleTimer(null);
+
+                  // Auto-submit the current board
+                  const board = engine?.get_board();
+                  addLog("Time's up! Auto-submitting your board.");
+                  setIsReady(true);
+                  sendMessage({ type: 'END_TURN_READY', board });
+              }
+          }, 1000);
+      }
+
+      // Clear timer if we become ready or opponent is no longer ready
+      if (isReady || !opponentReady) {
+          if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+          }
+          if (battleTimer !== null) {
+              setBattleTimer(null);
+          }
+      }
+
+      return () => {
+          if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+          }
+      };
+  }, [opponentReady, isReady, view?.phase]);
 
   // Trigger battle when both ready
   useEffect(() => {

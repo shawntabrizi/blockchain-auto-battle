@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { useMultiplayerStore } from '../store/multiplayerStore';
+
+const BATTLE_TIMER_SECONDS = 20;
 
 interface HUDProps {
   hideEndTurn?: boolean;
@@ -14,7 +16,40 @@ interface HUDProps {
 
 export function HUD({ hideEndTurn, customAction }: HUDProps) {
   const { view, endTurn, engine, setShowBag, showBag, selection } = useGameStore();
-  const { status, setIsReady, sendMessage, isReady, opponentReady } = useMultiplayerStore();
+  const { status, setIsReady, sendMessage, isReady, opponentReady, battleTimer } = useMultiplayerStore();
+
+  // Local timer for the waiting player (who already submitted)
+  const [waitingTimer, setWaitingTimer] = useState<number | null>(null);
+  const waitingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Start waiting timer when we submit and opponent hasn't
+  useEffect(() => {
+    if (status === 'in-game' && isReady && !opponentReady && view?.phase === 'shop') {
+      setWaitingTimer(BATTLE_TIMER_SECONDS);
+      waitingTimerRef.current = setInterval(() => {
+        setWaitingTimer(prev => {
+          if (prev !== null && prev > 1) return prev - 1;
+          return prev;
+        });
+      }, 1000);
+    }
+
+    // Clear when opponent is ready or we're no longer ready
+    if (!isReady || opponentReady) {
+      if (waitingTimerRef.current) {
+        clearInterval(waitingTimerRef.current);
+        waitingTimerRef.current = null;
+      }
+      setWaitingTimer(null);
+    }
+
+    return () => {
+      if (waitingTimerRef.current) {
+        clearInterval(waitingTimerRef.current);
+        waitingTimerRef.current = null;
+      }
+    };
+  }, [isReady, opponentReady, status, view?.phase]);
   // Keyboard shortcut for Bag view
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,6 +79,10 @@ export function HUD({ hideEndTurn, customAction }: HUDProps) {
   };
 
   const isWaiting = status === 'in-game' && isReady && !opponentReady;
+  const opponentWaiting = status === 'in-game' && !isReady && opponentReady;
+
+  // Determine display timer
+  const displayTimer = isWaiting ? waitingTimer : (opponentWaiting ? battleTimer : null);
 
   return (
     <div className={`hud h-12 lg:h-16 bg-gray-900/80 border-b border-gray-700 flex items-center justify-between px-2 lg:px-6 relative z-20 ${showCardPanel ? 'show-card-panel' : ''}`}>
@@ -86,13 +125,36 @@ export function HUD({ hideEndTurn, customAction }: HUDProps) {
               <span className="font-bold text-sm lg:text-base">{view.bag_count}</span>
             </button>
             {!hideEndTurn && (
-              <button
-                onClick={handleEndTurn}
-                disabled={isWaiting}
-                className={`btn btn-primary text-sm lg:text-lg px-3 lg:px-6 py-2 lg:py-3 transition-all ${isWaiting ? 'bg-gray-600 scale-95 opacity-80 cursor-not-allowed' : ''}`}
-              >
-                {isWaiting ? 'Waiting...' : 'Battle!'}
-              </button>
+              <>
+                {/* Timer display when either player is waiting */}
+                {displayTimer !== null && (
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${
+                    opponentWaiting
+                      ? (displayTimer <= 5 ? 'bg-red-600 animate-pulse' : 'bg-orange-600')
+                      : 'bg-blue-600'
+                  }`}>
+                    <span className="text-white text-sm lg:text-base font-bold">
+                      {opponentWaiting ? '⚠️ Submit in:' : '⏳ Waiting:'}
+                    </span>
+                    <span className={`text-white text-lg lg:text-xl font-bold ${displayTimer <= 5 ? 'text-yellow-300' : ''}`}>
+                      {displayTimer}s
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={handleEndTurn}
+                  disabled={isWaiting}
+                  className={`btn btn-primary text-sm lg:text-lg px-3 lg:px-6 py-2 lg:py-3 transition-all ${
+                    isWaiting
+                      ? 'bg-gray-600 scale-95 opacity-80 cursor-not-allowed'
+                      : opponentWaiting && displayTimer !== null && displayTimer <= 5
+                        ? 'animate-pulse bg-red-500 hover:bg-red-400'
+                        : ''
+                  }`}
+                >
+                  {isWaiting ? 'Waiting...' : 'Battle!'}
+                </button>
+              </>
             )}
             {customAction && (
               <button
