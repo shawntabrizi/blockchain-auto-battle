@@ -34,6 +34,7 @@ pub struct BattleOutput {
     pub events: Vec<CombatEvent>,
     pub initial_player_units: Vec<UnitView>,
     pub initial_enemy_units: Vec<UnitView>,
+    pub round: u32,  // The round this battle was for (for display during animation)
 }
 
 /// Snapshot of turn state for undo functionality
@@ -450,14 +451,137 @@ impl GameEngine {
         }
     }
 
-    /// Overwrite the game state from JSON (for P2P sync)
+    /// Get just the board state as JSON (for P2P battle sync)
     #[wasm_bindgen]
-    pub fn set_state(&mut self, state_val: JsValue) -> Result<(), String> {
-        let state: GameState = serde_wasm_bindgen::from_value(state_val)
-            .map_err(|e| format!("Failed to parse state: {:?}", e))?;
-        self.state = state;
-        self.start_planning_phase();
-        Ok(())
+    pub fn get_board(&self) -> JsValue {
+        match serde_wasm_bindgen::to_value(&self.state.board) {
+            Ok(val) => val,
+            Err(e) => {
+                log::error(&format!("get_board serialization failed: {:?}", e));
+                JsValue::NULL
+            }
+        }
+    }
+
+    /// Resolve a P2P battle between two player boards.
+    /// This is a self-contained method that:
+    /// 1. Sets phase to Battle
+    /// 2. Runs the battle simulation
+    /// 3. Applies wins/lives result
+    /// 4. Returns battle output for animation
+    /// After animation, call continue_after_battle() to advance to next round.
+    #[wasm_bindgen]
+    pub fn resolve_battle_p2p(
+        &mut self,
+        player_board_js: JsValue,
+        enemy_board_js: JsValue,
+        seed: u64,
+    ) -> JsValue {
+        log::info("=== P2P BATTLE START ===");
+
+        // Set phase to Battle
+        self.state.phase = GamePhase::Battle;
+
+        // Parse boards from JS
+        let player_board: Vec<Option<BoardUnit>> =
+            serde_wasm_bindgen::from_value(player_board_js).unwrap_or_default();
+        let enemy_board: Vec<Option<BoardUnit>> =
+            serde_wasm_bindgen::from_value(enemy_board_js).unwrap_or_default();
+
+        // Convert player board to CombatUnits
+        let player_units: Vec<CombatUnit> = player_board
+            .iter()
+            .flatten()
+            .map(|u| {
+                let card = self.get_card(u.card_id);
+                let mut cu = CombatUnit::from_card(card.clone());
+                cu.health = u.current_health.max(0);
+                cu
+            })
+            .collect();
+
+        // Convert enemy board to CombatUnits
+        let enemy_units: Vec<CombatUnit> = enemy_board
+            .iter()
+            .flatten()
+            .map(|u| {
+                let card = self.get_card(u.card_id);
+                let mut cu = CombatUnit::from_card(card.clone());
+                cu.health = u.current_health.max(0);
+                cu
+            })
+            .collect();
+
+        // Run the battle with deterministic RNG
+        let mut rng = XorShiftRng::seed_from_u64(seed);
+        let events = resolve_battle(player_units.clone(), enemy_units.clone(), &mut rng);
+
+        // Generate initial views for UI animation
+        let mut limits = manalimit_core::limits::BattleLimits::new();
+        let initial_player_units: Vec<UnitView> = player_board
+            .iter()
+            .flatten()
+            .map(|u| {
+                let card = self.get_card(u.card_id);
+                UnitView {
+                    instance_id: limits.generate_instance_id(manalimit_core::limits::Team::Player),
+                    template_id: card.template_id.clone(),
+                    name: card.name.clone(),
+                    attack: card.stats.attack,
+                    health: u.current_health,
+                    abilities: card.abilities.clone(),
+                }
+            })
+            .collect();
+
+        limits.reset_phase_counters();
+        let initial_enemy_units: Vec<UnitView> = enemy_board
+            .iter()
+            .flatten()
+            .map(|u| {
+                let card = self.get_card(u.card_id);
+                UnitView {
+                    instance_id: limits.generate_instance_id(manalimit_core::limits::Team::Enemy),
+                    template_id: card.template_id.clone(),
+                    name: card.name.clone(),
+                    attack: card.stats.attack,
+                    health: u.current_health,
+                    abilities: card.abilities.clone(),
+                }
+            })
+            .collect();
+
+        // Apply the battle result (wins/lives)
+        if let Some(CombatEvent::BattleEnd { result }) = events.last() {
+            match result {
+                manalimit_core::battle::BattleResult::Victory => self.state.wins += 1,
+                manalimit_core::battle::BattleResult::Defeat => self.state.lives -= 1,
+                _ => {} // Draw
+            }
+            log::info(&format!("P2P Battle Result: {:?}", result));
+        }
+
+        // Note: Round advancement happens when continue_after_battle() is called
+        // This keeps P2P flow consistent with single-player flow
+
+        let output = BattleOutput {
+            events,
+            initial_player_units,
+            initial_enemy_units,
+            round: self.state.round as u32,
+        };
+
+        self.last_battle_output = Some(output.clone());
+
+        log::info("=== P2P BATTLE END ===");
+
+        match serde_wasm_bindgen::to_value(&output) {
+            Ok(val) => val,
+            Err(e) => {
+                log::error(&format!("resolve_battle_p2p serialization failed: {:?}", e));
+                JsValue::NULL
+            }
+        }
     }
 
     // ========================================================================
@@ -690,6 +814,7 @@ impl GameEngine {
             events,
             initial_player_units,
             initial_enemy_units,
+            round: self.state.round as u32,
         });
 
         log::info("=== BATTLE END ===");

@@ -16,11 +16,8 @@ declare module 'manalimit-client' {
     continue_after_battle(): void;
     new_run(): void;
     get_state(): any;
-    set_state(state: any): void;
     get_board(): any;
     resolve_battle_p2p(playerBoard: any, enemyBoard: any, seed: bigint): any;
-    apply_battle_result(result: any): void;
-    set_phase_battle(): void;
   }
 
   export function greet(): string;

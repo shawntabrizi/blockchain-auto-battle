@@ -15,11 +15,8 @@ interface GameEngine {
   continue_after_battle: () => void;
   new_run: () => void;
   get_state: () => any;
-  set_state: (state: any) => void;
   get_board: () => any;
-  set_phase_battle: () => void;
   resolve_battle_p2p: (player_board: any, enemy_board: any, seed: bigint) => any;
-  apply_battle_result: (result: any) => void;
   get_commit_action: () => any;
   get_commit_action_scale: () => Uint8Array;
   get_bag: () => number[];
@@ -183,13 +180,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { engine } = get();
     if (!engine) return;
     try {
-      const view = engine.get_view();
-      // If already in shop phase (e.g., blockchain already processed the turn),
-      // just close the overlay without calling the WASM method
-      if (view?.phase === 'shop') {
-        set({ showBattleOverlay: false, battleOutput: null });
-        return;
-      }
+      // Both single-player and P2P use the same flow:
+      // resolve battle → show animation → continue_after_battle advances round
       engine.continue_after_battle();
       set({ view: engine.get_view(), showBattleOverlay: false, battleOutput: null });
     } catch (err) { console.error(err); }
@@ -229,13 +221,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { engine } = get();
     if (!engine) return;
     try {
-      engine.set_phase_battle();
+      // resolve_battle_p2p is self-contained: sets phase, runs battle, applies result
       const battleOutput = engine.resolve_battle_p2p(engine.get_board(), opponentBoard, BigInt(seed));
-      const events = (battleOutput as any).events;
-      const lastEvent = events[events.length - 1];
-      if (lastEvent && lastEvent.type === 'BattleEnd') {
-        engine.apply_battle_result(lastEvent.payload.result);
-      }
       set({ view: engine.get_view(), battleOutput: battleOutput as any, selection: null, showBattleOverlay: true });
     } catch (err) { console.error(err); }
   },

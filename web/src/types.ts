@@ -147,6 +147,7 @@ export interface BattleOutput {
   events: CombatEvent[];
   initial_player_units: UnitView[];
   initial_enemy_units: UnitView[];
+  round: number;  // The round this battle was for
 }
 
 // Selection state for UI

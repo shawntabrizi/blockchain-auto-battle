@@ -12,7 +12,6 @@ export function BattleOverlay({ mode = 'game' }: BattleOverlayProps) {
   const gameBattleOutput = useGameStore((state) => state.battleOutput);
   const gameShowOverlay = useGameStore((state) => state.showBattleOverlay);
   const gameContinue = useGameStore((state) => state.continueAfterBattle);
-  const gameView = useGameStore((state) => state.view);
 
   const sandboxBattleOutput = useSandboxStore((state) => state.battleOutput);
   const sandboxShowOverlay = useSandboxStore((state) => state.isBattling);
@@ -24,7 +23,7 @@ export function BattleOverlay({ mode = 'game' }: BattleOverlayProps) {
   const battleOutput = isSandbox ? sandboxBattleOutput : gameBattleOutput;
   const showOverlay = isSandbox ? sandboxShowOverlay : gameShowOverlay;
   const onContinue = isSandbox ? sandboxClose : gameContinue;
-  const title = isSandbox ? `Sandbox Battle (Seed: ${sandboxSeed})` : `Round ${gameView?.round} Battle`;
+  const title = isSandbox ? `Sandbox Battle (Seed: ${sandboxSeed})` : `Round ${battleOutput?.round} Battle`;
 
   const [battleFinished, setBattleFinished] = useState(false);
 
