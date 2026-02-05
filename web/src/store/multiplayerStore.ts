@@ -21,8 +21,9 @@ interface MultiplayerState {
   opponentBoard: any | null;
   isReady: boolean;
   opponentReady: boolean;
-  gameSeed: number | null;
-  battleTimer: number | null;  // Countdown seconds when opponent is waiting
+  gameSeed: number | null;        // Player's own seed for bag/hand generation
+  battleSeed: number | null;      // Shared seed for battle resolution
+  battleTimer: number | null;     // Countdown seconds when opponent is waiting
   
   // Actions
   initializePeer: () => Promise<string>;
@@ -37,6 +38,7 @@ interface MultiplayerState {
   setOpponentBoard: (board: any) => void;
   setIsReady: (ready: boolean) => void;
   setGameSeed: (seed: number) => void;
+  setBattleSeed: (seed: number) => void;
   setStatus: (status: ConnectionStatus) => void;
   setBattleTimer: (seconds: number | null) => void;
 }
@@ -54,6 +56,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   isReady: false,
   opponentReady: false,
   gameSeed: null,
+  battleSeed: null,
   battleTimer: null,
 
   initializePeer: async () => {
@@ -114,10 +117,10 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
       });
 
       conn.on('data', (data: any) => {
-           // Handle START_GAME here to capture the seed even if MultiplayerManager hasn't mounted
+           // Handle START_GAME here to capture seeds even if MultiplayerManager hasn't mounted
            if (data && typeof data === 'object' && data.type === 'START_GAME') {
-               get().addLog(`Received START_GAME with seed ${data.seed}`);
-               set({ gameSeed: data.seed, status: 'in-game' });
+               get().addLog(`Received START_GAME with playerSeed ${data.playerSeed}, battleSeed ${data.battleSeed}`);
+               set({ gameSeed: data.playerSeed, battleSeed: data.battleSeed, status: 'in-game' });
            }
            // Other messages are handled by MultiplayerManager
       });
@@ -159,6 +162,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   setOpponentBoard: (board: any) => set({ opponentBoard: board }),
   setIsReady: (ready: boolean) => set({ isReady: ready }),
   setGameSeed: (seed: number) => set({ gameSeed: seed }),
+  setBattleSeed: (seed: number) => set({ battleSeed: seed }),
   setStatus: (status: ConnectionStatus) => set({ status }),
   setBattleTimer: (seconds: number | null) => set({ battleTimer: seconds }),
 
@@ -177,6 +181,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
           isReady: false,
           opponentReady: false,
           gameSeed: null,
+          battleSeed: null,
           battleTimer: null
       });
   }

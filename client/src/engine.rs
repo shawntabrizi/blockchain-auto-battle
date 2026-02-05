@@ -439,6 +439,17 @@ impl GameEngine {
         self.log_state();
     }
 
+    /// Start a new run with a specific seed (for multiplayer)
+    #[wasm_bindgen]
+    pub fn new_run_with_seed(&mut self, seed: u64) {
+        log::action("new_run_with_seed", &format!("Starting run with seed {}", seed));
+        self.state = GameState::new(seed);
+        self.last_battle_output = None;
+        self.initialize_bag();
+        self.start_planning_phase();
+        self.log_state();
+    }
+
     /// Get the full game state as JSON (for P2P sync)
     #[wasm_bindgen]
     pub fn get_state(&self) -> JsValue {

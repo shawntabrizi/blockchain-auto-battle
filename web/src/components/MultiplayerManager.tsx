@@ -17,7 +17,9 @@ export function MultiplayerManager() {
       opponentReady,
       opponentBoard,
       gameSeed,
+      battleSeed,
       setGameSeed,
+      setBattleSeed,
       setStatus,
       setIsReady,
       battleTimer,
@@ -72,10 +74,18 @@ export function MultiplayerManager() {
       if (isHost && status === 'connected' && !gameSeed && engine) {
           hostGameStarted.current = true;
           addLog("Host: Starting game session...");
-          const seed = Math.floor(Math.random() * 1000000);
-          setGameSeed(seed);
-          startMultiplayerGame(seed);
-          sendMessage({ type: 'START_GAME', seed });
+          // Generate three separate seeds:
+          // - hostPlayerSeed: for host's bag/hand generation
+          // - guestPlayerSeed: for guest's bag/hand generation
+          // - sharedBattleSeed: shared seed for battle resolution
+          const hostPlayerSeed = Math.floor(Math.random() * 1000000);
+          const guestPlayerSeed = Math.floor(Math.random() * 1000000);
+          const sharedBattleSeed = Math.floor(Math.random() * 1000000);
+
+          setGameSeed(hostPlayerSeed);
+          setBattleSeed(sharedBattleSeed);
+          startMultiplayerGame(hostPlayerSeed);
+          sendMessage({ type: 'START_GAME', playerSeed: guestPlayerSeed, battleSeed: sharedBattleSeed });
           setStatus('in-game');
       }
   }, [isHost, status, gameSeed, engine]);
@@ -140,20 +150,20 @@ export function MultiplayerManager() {
 
   // Trigger battle when both ready
   useEffect(() => {
-      if (isReady && opponentReady && opponentBoard && gameSeed !== null && view) {
+      if (isReady && opponentReady && opponentBoard && battleSeed !== null && view) {
           addLog("Both players ready! Resolving battle...");
-          
-          // Round-specific seed
-          const roundSeed = gameSeed + (view.round * 100);
-          
+
+          // Round-specific seed using the shared battle seed
+          const roundSeed = battleSeed + (view.round * 100);
+
           resolveMultiplayerBattle(opponentBoard, roundSeed);
-          
+
           // Reset ready states for next round transition
           setIsReady(false);
           setOpponentReady(false);
           setOpponentBoard(null);
       }
-  }, [isReady, opponentReady, opponentBoard, gameSeed, view]);
+  }, [isReady, opponentReady, opponentBoard, battleSeed, view]);
 
   return null;
 }
