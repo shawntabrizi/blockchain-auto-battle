@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -11,6 +11,9 @@ import { MultiplayerGame } from './components/MultiplayerGame.tsx';
 import { BlockchainPage } from './components/BlockchainPage.tsx';
 import { CreateSetPage } from './components/CreateSetPage.tsx';
 import { CreateCardPage } from './components/CreateCardPage.tsx';
+
+// Lazy-loaded features (code-split, no impact on main bundle)
+import { PresentationsPage, PresentationViewer } from './features/presentations';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -25,6 +28,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/blockchain" element={<BlockchainPage />} />
         <Route path="/blockchain/create-card" element={<CreateCardPage />} />
         <Route path="/blockchain/create-set" element={<CreateSetPage />} />
+        <Route path="/presentations" element={<Suspense fallback={<div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>}><PresentationsPage /></Suspense>} />
+        <Route path="/presentations/:id" element={<Suspense fallback={<div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>}><PresentationViewer /></Suspense>} />
       </Routes>
     </HashRouter>
   </StrictMode>
