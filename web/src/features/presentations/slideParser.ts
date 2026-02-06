@@ -42,23 +42,23 @@ function parseSlideContent(content: string): { html: string; components: Compone
 
   // Extract component declarations: <!-- component:type {"prop": "value"} -->
   const componentPattern = /<!--\s*component:(\w+)\s+(\{[^}]+\})\s*-->/g;
-  let match;
 
-  while ((match = componentPattern.exec(content)) !== null) {
-    const type = match[1];
-    try {
-      const props = JSON.parse(match[2]);
-      components.push({ type, props });
-    } catch {
-      console.warn('Failed to parse component props:', match[2]);
-    }
-  }
-
-  // Replace component declarations with placeholders for rendering
+  // Replace component declarations with placeholders and extract component data in one pass
+  console.log('[SlideParser] Parsing content, looking for components...');
   const htmlContent = content.replace(
     componentPattern,
-    (_, type, propsStr) => `<div class="component-placeholder" data-component="${type}" data-props='${propsStr}'></div>`
+    (_, type, propsStr) => {
+      console.log('[SlideParser] Found component:', type, propsStr);
+      try {
+        const props = JSON.parse(propsStr);
+        components.push({ type, props });
+      } catch {
+        console.warn('Failed to parse component props:', propsStr);
+      }
+      return `<div class="component-placeholder" data-component="${type}" data-props='${propsStr}'></div>`;
+    }
   );
+  console.log('[SlideParser] Components found:', components.length);
 
   return {
     html: renderMarkdown(htmlContent),

@@ -60,7 +60,8 @@ export default function PresentationViewer() {
     if (!slideContentRef.current) return;
 
     const placeholders = slideContentRef.current.querySelectorAll('.component-placeholder');
-    console.log('Found placeholders:', placeholders.length, slideContentRef.current.innerHTML.substring(0, 500));
+    console.log('[Presentation] Slide HTML:', slideContentRef.current.innerHTML);
+    console.log('[Presentation] Found placeholders:', placeholders.length);
     placeholders.forEach(placeholder => {
       const componentType = placeholder.getAttribute('data-component');
       const propsStr = placeholder.getAttribute('data-props');
