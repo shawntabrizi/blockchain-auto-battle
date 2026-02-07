@@ -54,7 +54,7 @@ A **deck-building auto-battler** that combines the best elements of:
 
 <!-- component:two-column-start {} -->
 
-<!-- component:unit-card {"name": "Fire Elemental", "attack": 4, "health": 3, "play_cost": 3, "pitch_value": 2, "template_id": "fire_elemental"} -->
+<!-- component:unit-card {"name": "Wolf Rider", "attack": 3, "health": 2, "play_cost": 3, "pitch_value": 1, "template_id": "wolf_rider", "abilities": [{"trigger": "OnFaint", "effect": {"type": "Damage"}, "name": "Dying Bite", "description": "Deal 2 damage to front enemy on death", "conditions": []}]} -->
 
 <!-- component:column-break {} -->
 
@@ -64,7 +64,7 @@ A **deck-building auto-battler** that combines the best elements of:
 | **Pitch Value** | Top Right (Red) | Mana gained when pitched |
 | **Attack** | Bottom Left (⚔) | Damage dealt when attacking |
 | **Health** | Bottom Right (❤) | Damage before dying |
-| **Abilities** | Center | Special effects triggered during battle |
+| **Abilities** | Middle Right (✶) | Special effects triggered during battle |
 
 <!-- component:two-column-end {} -->
 
