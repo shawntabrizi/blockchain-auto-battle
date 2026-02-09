@@ -133,6 +133,7 @@ Manalimit is designed end-to-end for the blockchain:
 - Technology of the Game
 - Mechanics of the Game
 - Ecosystem of the Game
+- Accessibility of the Game
 
 ---
 
@@ -197,6 +198,7 @@ The battle engine enforces **hard limits** to prevent abuse:
 - You don't play against live opponents
 - You play against snapshots of other players' boards
      - You are paired with other players which have the same **Rounds**, **Lives** (❤️), and **Wins** (⭐) as you.
+     - Blockchain acts as a public matchmaking engine.
 - No waiting, no coordination needed
 - The game is always populated with opponents!
 - Great for bootstrapping a community
@@ -230,6 +232,85 @@ The shop phase is designed to be fully asynchronous, and require only **one** tr
 - This is used to replicate the final state of the user, and is immediately used for battle!
 
 Users can literally put down and pick up the game at any time, without worry.
+
+---
+
+# Economy of the Game
+
+---
+
+# Self-Sustaining Economies
+
+The game creates value loops which keeps the game evolving.
+
+```
+Players ──► Tournaments ──► Rewards
+   ▲                           │
+   │                           │
+   │                           ▼
+   └─ Sets ◄── Cards ◄── Creators
+```
+
+---
+
+# Build-to-Earn
+
+- Failed blockchain games focus on "play-to-earn" mechanics, which are just ponzinomics.
+- Real games should extract value from those who enjoy the game, and return value to those who make the game enjoyable.
+- The most expensive part of strategy card games is **game design**.
+- Manalimit allows the community to take on the role of game design, and be rewarded for doing so!
+
+---
+
+# Card Creation
+
+Anyone can create cards by defining:
+
+- Stats (Attack, Health, Cost, Pitch)
+- Abilities (using the primitive system)
+- Rarity (affects draft frequency)
+
+Cards are stored on-chain, available to everyone
+
+---
+
+# Set Curation
+
+**Sets** are curated collections of cards
+
+- Curators select cards that create interesting metas
+- Sets can be themed, balanced, or experimental
+- Different sets = different game experiences
+
+The meta is what **you** make it
+
+---
+
+# Tournament Economics
+
+Entry fees distributed to:
+
+| Recipient | Reward For |
+|-----------|------------|
+| **Top Finishers** | Skill and performance |
+| **Set Curators** | Creating fun metas |
+| **Card Creators** | Designing used cards |
+
+Everyone who contributes value captures value
+
+---
+
+# Creator Incentives
+
+**Card Creators**
+- Earn when their cards see play
+- Incentive to design fun, balanced cards
+
+**Set Curators**
+- Earn when their sets are used
+- Incentive to create engaging metas
+
+**A game that rewards its builders**
 
 ---
 
@@ -298,77 +379,6 @@ Enemy: OnHurt → Gain +1 attack
 
 One faint triggers a cascade of effects - all deterministic, all verifiable
 
----
-
-# Card Creation
-
-Anyone can create cards by defining:
-
-- Stats (Attack, Health, Cost, Pitch)
-- Abilities (using the primitive system)
-- Rarity (affects draft frequency)
-
-Cards are stored on-chain, available to everyone
-
----
-
-# Set Curation
-
-**Sets** are curated collections of cards
-
-- Curators select cards that create interesting metas
-- Sets can be themed, balanced, or experimental
-- Different sets = different game experiences
-
-The meta is what **you** make it
-
----
-
-# Community & Economy
-
----
-
-# Self-Sustaining Economies
-
-The game creates value loops:
-
-```
-Players ──► Tournaments ──► Rewards
-   ▲                           │
-   │    ┌──────────────────────┘
-   │    ▼
-   └─ Cards ◄── Creators
-```
-
----
-
-# Tournament Economics
-
-Entry fees distributed to:
-
-| Recipient | Reward For |
-|-----------|------------|
-| **Top Finishers** | Skill and performance |
-| **Set Curators** | Creating fun metas |
-| **Card Creators** | Designing used cards |
-
-Everyone who contributes value captures value
-
----
-
-# Creator Incentives
-
-**Card Creators**
-- Earn when their cards see play
-- Incentive to design fun, balanced cards
-
-**Set Curators**
-- Earn when their sets are used
-- Incentive to create engaging metas
-
-**A game that rewards its builders**
-
----
 
 # Deeper Blockchain Integration
 
