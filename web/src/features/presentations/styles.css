@@ -103,6 +103,15 @@
   color: #d1d5db;
 }
 
+.slide-content .slide-small-text {
+  font-size: 0.7em;
+}
+
+.slide-content .slide-small-text .slide-table th,
+.slide-content .slide-small-text .slide-table td {
+  padding: 0.4rem 0.6rem;
+}
+
 /* Component placeholder styles */
 .slide-content .component-placeholder {
   display: flex;

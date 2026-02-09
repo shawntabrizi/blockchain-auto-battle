@@ -18,9 +18,9 @@ paginate: true
 
 A **deck-building auto-battler** that combines the best elements of:
 
-- **Magic: The Gathering** - Resource management, deck building, card abilities
-- **Super Auto Pets** - Auto-battling, ghost opponents, board positioning
-- **Flesh and Blood** - Pitch system, deck control
+- **Magic: The Gathering** - Resource management, deck building, card abilities.
+- **Super Auto Pets** - Auto-battling, ghost opponents, board positioning.
+- **Flesh and Blood** - Pitch system, deck control.
 
 ---
 
@@ -32,9 +32,9 @@ A **deck-building auto-battler** that combines the best elements of:
       └─── Repeat ───────┘
 ```
 
-- **Shop**: Build your board, manage resources
-- **Battle**: Watch your units fight automatically
-- **Goal**: Win 10 battles ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐ before losing 3 lives ❤️❤️❤️
+- **Shop**: Build your board, manage resources.
+- **Battle**: Watch your units fight automatically.
+- **Goal**: Win 10 battles ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐ before losing 3 lives ❤️❤️❤️.
 
 ---
 
@@ -42,9 +42,9 @@ A **deck-building auto-battler** that combines the best elements of:
 
 <!-- component:shop-demo {} -->
 
-- **Pitch** cards to the ash pile → gain mana (red value)
+- **Pitch** cards to the ash pile → gain mana (red value).
      - Your total mana is limited, but grows with each turn.
-- **Play** cards to the board → spend mana (blue cost)
+- **Play** cards to the board → spend mana (blue cost).
 - Remaining cards are shuffled back into the deck.
      - Choose carefully what cards you pitch and what cards you keep!
 
@@ -133,7 +133,7 @@ Manalimit is designed end-to-end for the blockchain:
 - Technology of the Game
 - Mechanics of the Game
 - Ecosystem of the Game
-- Accessibility of the Game
+- Adoption of the Game
 
 ---
 
@@ -156,7 +156,7 @@ The **same Rust code** runs everywhere:
      └───────────┘ └───────────────┘
 ```
 
-Byte-perfect execution in both environments
+Byte-perfect execution in both environments.
 
 ---
 
@@ -164,10 +164,10 @@ Byte-perfect execution in both environments
 
 Randomness is an important part of making games fun.
 
-- Seed-based RNG for "random" effects
-- Seed provided by the blockchain, and stored in the game state of the user
-     - Randomness cannot be controlled or manipulated by the player
-- Every battle is reproducible given the same inputs
+- Seed-based RNG for "random" effects.
+- Seed provided by the blockchain, and stored in the game state of the user.
+     - Randomness cannot be controlled or manipulated by the player.
+- Every battle is reproducible given the same inputs.
 
 ---
 
@@ -195,13 +195,13 @@ The battle engine enforces **hard limits** to prevent abuse:
 
 # Ghost Opponents
 
-- You don't play against live opponents
-- You play against snapshots of other players' boards
+- You don't play against live opponents.
+- You play against snapshots of other players' boards.
      - You are paired with other players which have the same **Rounds**, **Lives** (❤️), and **Wins** (⭐) as you.
      - Blockchain acts as a public matchmaking engine.
-- No waiting, no coordination needed
+- No waiting, no coordination needed.
 - The game is always populated with opponents!
-- Great for bootstrapping a community
+- Great for bootstrapping a community.
 
 ---
 
@@ -231,7 +231,7 @@ The shop phase is designed to be fully asynchronous, and require only **one** tr
 - The browser engine creates a compact summary of the user actions and sends it to the blockchain.
 - This is used to replicate the final state of the user, and is immediately used for battle!
 
-Users can literally put down and pick up the game at any time, without worry.
+Users can literally put down and pick up the game at any time, without worry!
 
 ---
 
@@ -241,7 +241,7 @@ Users can literally put down and pick up the game at any time, without worry.
 
 # Self-Sustaining Economies
 
-The game creates value loops which keeps the game evolving.
+The game creates value loops which keep the game evolving.
 
 ```
 Players ──► Tournaments ──► Rewards
@@ -269,9 +269,9 @@ Players ──► Tournaments ──► Rewards
 - Users can design cards:
      - Stats (Attack, Health, Cost, Pitch)
      - Abilities (Fully customizable, see further)
-- Cards are stored on-chain, available to everyone
-     - Cards are given permanent unique identifiers
-     - Card Hash is used to ensure no duplicates are created
+- Cards are stored on-chain, available to everyone.
+     - Cards are given permanent unique identifiers.
+     - Card Hash is used to ensure no duplicates are created.
 
 ---
 
@@ -317,28 +317,77 @@ Everyone who contributes value captures value.
 
 ---
 
+<!-- component:two-column-start {} -->
+
+<!-- component:unit-card {"name": "Mana Reaper", "attack": 2, "health": 2, "play_cost": 8, "pitch_value": 2, "template_id": "mana_reaper", "abilities": [{"trigger": "OnStart", "effect": {"type": "Destroy"}, "name": "Harvest the Rich", "description": "Destroy the highest mana cost enemy", "conditions": []}, {"trigger": "OnStart", "effect": {"type": "Destroy"}, "name": "Cull the Weak", "description": "Destroy the lowest mana cost enemy", "conditions": []}]} -->
+
+<!-- component:column-break {} -->
+
+# Card Set Speed
+
+The basic stats of a card can already be manipulated to heavily affect the "speed" of gameplay of a card set:
+
+- 🔵 Mana: The lower the mana, the sooner people can play a card.
+- 🔴 Pitch: The higher the pitch cost, the more resources a user has per turn.
+- ⚔ Attack: The higher the average attack of a card, the more aggressive a format is.
+- ❤ Health: The higher the health of a card, the more defensive a format is.
+
+Even tweaking one of these stats by one creates a new card with new dynamics.
+
+<!-- component:two-column-end {} -->
+
+---
+
+
+<!-- component:two-column-start {} -->
+
+<!-- component:card-breakdown {"name": "Mana Reaper", "attack": 2, "health": 2, "play_cost": 8, "pitch_value": 2, "template_id": "mana_reaper", "abilities": [{"trigger": "OnStart", "effect": {"type": "Destroy"}, "name": "Harvest the Rich", "description": "Destroy the highest mana cost enemy", "conditions": []}, {"trigger": "OnStart", "effect": {"type": "Destroy"}, "name": "Cull the Weak", "description": "Destroy the lowest mana cost enemy", "conditions": []}]} -->
+
+<!-- component:column-break {} -->
+
+# Card Abilities
+
+But the real design space of cards and card sets come from card abilities.
+
+Cards can have one or more abilities, all using composable primitives.
+
+<!-- component:two-column-end {} -->
+
+---
+
 # The Ability System
 
-Cards are built from composable primitives:
+Cards abilities are built from composable primitives:
 
-| Component | Examples |
-|-----------|----------|
-| **Triggers** | OnStart, OnFaint, OnHurt, BeforeAttack |
-| **Targets** | Self, Allies, Enemies, Adjacent, Random |
-| **Conditions** | IfHealth>, IfAttack<, IfAlone |
-| **Effects** | Damage, Heal, Buff, Spawn, Destroy |
+<!-- component:small-start {} -->
+
+| Triggers | Effects | Targets | Scopes |
+|----------|---------|---------|--------|
+| OnStart | Damage | Position | Self |
+| OnFaint | ModifyStats | Adjacent | Allies |
+| OnAllyFaint | SpawnUnit | Random | Enemies |
+| OnHurt | Destroy | Standard | All |
+| OnSpawn | | All | AlliesOther |
+| OnAllySpawn | | | TriggerSource |
+| OnEnemySpawn | | | Aggressor |
+| BeforeUnitAttack | | | |
+| AfterUnitAttack | | | |
+| BeforeAnyAttack | | | |
+| AfterAnyAttack | | | |
+
+<!-- component:small-end {} -->
+
+There is plenty of design space for more abilities!
 
 ---
 
 # Combining Primitives
 
-**Simple**: "OnFaint: Deal 2 damage to a random enemy"
+- **Simple**: "OnFaint: Deal 2 damage to a random enemy"
+- **Complex**: "BeforeAttack: If this unit has less than 3 health, gain +2 attack and spawn a 1/1 token"
+- **Synergistic**: "OnAllyFaint: All allies gain +1/+1"
 
-**Complex**: "BeforeAttack: If this unit has less than 3 health, gain +2 attack and spawn a 1/1 token"
-
-**Synergistic**: "OnAllyFaint: All allies gain +1/+1"
-
-The system enables emergent complexity from simple rules
+The system enables emergent complexity from simple rules.
 
 ---
 
@@ -350,75 +399,45 @@ Unit B: OnSpawn → Deal 1 damage to all enemies
 Enemy: OnHurt → Gain +1 attack
 ```
 
-One faint triggers a cascade of effects - all deterministic, all verifiable
-
-
-# Deeper Blockchain Integration
+One faint triggers a cascade of effects - all deterministic, all verifiable.
 
 ---
 
-# NFT Integration
+# Themes, Synergies, and Strategies
 
-NFTs can enhance the experience:
+It is common to create "rock paper scissors" strategies to prevent a stale metagame.
 
-- **Card Art**: Custom images for cards
-- **Themes**: Player backgrounds and UI skins
-- **Trophies**: Tournament wins and achievements
-- **Cosmetics**: Board effects, animations
+For example:
 
-Your collection, your identity
+- Spawners: Cards that spawn other cards, and cards that buff spawned cards.
+- Brute Force: Cards that are big, angry, and efficiently costed.
+- Snipers: Cards that deal damage through abilities, while having weak basic stats.
 
----
-
-# Governance Systems
-
-Community-driven curation:
-
-- **Card Approval**: Vote on new cards entering sets
-- **Set Standards**: Define rules for competitive play
-- **Tournament Rules**: Community-decided formats
-
-Decentralized game design
+Spawners lose to brutes. Brutes lose to snipers. Snipers lose to spawners.
 
 ---
 
-# Cross-Chain Possibilities
+# All Cards are Valid
 
-- Cards as cross-chain assets
-- Tournaments across multiple chains
-- Shared card pools, separate economies
-
-The game goes where the players are
-
----
-
-# Zero-Cost Onboarding
+- The game intentionally does not limit the creativity of users designing cards.
+     - Besides the encoded size and encoding depth of a card.
+- Cards can be submitted to the game which lead to infinitely complexity, but the engine will limit it.
+     - And players triggering those limits will forfeit the round.
+- Cards which are super powerful or super weak can be fun in sets which are super powerful or super weak too.
 
 ---
 
-# Play Without Blockchain
+# Engine Development
 
-**Local Mode**
-- Full game experience
-- No wallet needed
-- No transactions required
-
-**Versus Mode**
-- Play against friends
-- Peer-to-peer connections
-- Still completely free
+- At some point, we might see the community design and implement:
+     - New abilities.
+     - New game modes.
+     - New game rules.
+- This will now allow governance to take the game even beyond what we can imagine here.
 
 ---
 
-# Blockchain as Free Database
-
-Even without transactions, users benefit from:
-
-- **Card Sets**: Access community-created content
-- **Ghost Opponents**: Play against real player boards
-- **Leaderboards**: See how you compare
-
-**Read is free** - only writing costs
+# Adoption of the Game
 
 ---
 
@@ -431,7 +450,92 @@ Free Player ──► Creates Wallet ──► Enters Tournament
      └────────────────────────────────────┘
 ```
 
-Players can engage at their comfort level
+Players can engage at their comfort level.
+
+---
+
+# Free to Play
+
+The blockchain is truly a public database that can power the game.
+
+<!-- component:two-column-start {} -->
+
+- **Local Mode**
+     - Full game experience.
+     - No wallet needed.
+     - No transactions required.
+
+<!-- component:column-break {} -->
+
+- **Versus Mode**
+     - Play against friends.
+     - Peer-to-peer connections.
+     - Still completely free.
+
+<!-- component:two-column-end {} -->
+
+Even without transactions, users benefit from the blockchain:
+
+- **Card and Sets**: Access community-created content.
+- **Ghost Opponents**: Play against real player boards.
+
+---
+
+# Treasury Subsidized Tournaments
+
+To bootstrap initial tournaments, treasury can provide minimum prize support, ensuring that players and creators are rewarded early in the lifetime of the game.
+
+---
+
+# Treasury Subsidized Achievements
+
+- Leaderboards.
+- Card usage goals.
+- Set usage goals.
+- Win streaks.
+- Etc.
+
+---
+
+# Deeper Blockchain Integration
+
+---
+
+# NFT Integration
+
+NFTs can enhance the experience:
+
+- **Card Art**: Custom images for cards.
+- **Themes**: Player backgrounds and UI skins.
+     - Could introduce modifiers to the battle board.
+- **Trophies**: Tournament wins and achievements.
+- **Cosmetics**: Board effects, animations.
+
+Your collection, your identity.
+
+---
+
+# Governance Systems
+
+Community-driven curation:
+
+- "Standard" sets.
+
+- **Card Approval**: Vote on new cards entering sets.
+- **Set Standards**: Define rules for competitive play.
+- **Tournament Rules**: Community-decided formats.
+
+Decentralized game design.
+
+---
+
+# Cross-Chain Possibilities
+
+- Cards as cross-chain assets.
+- Tournaments across multiple chains.
+- Shared card pools, separate economies.
+
+The game goes where the players are.
 
 ---
 
@@ -442,14 +546,14 @@ Players can engage at their comfort level
 # Expanding the System
 
 **More Abilities**
-- New triggers, conditions, effects
-- More complex interactions
-- Deeper strategic possibilities
+- New triggers, conditions, effects.
+- More complex interactions.
+- Deeper strategic possibilities.
 
 **Enhanced NFT Integration**
-- Animated cards
-- Interactive boards
-- Achievement systems
+- Animated cards.
+- Interactive boards.
+- Achievement systems.
 
 ---
 
@@ -486,15 +590,15 @@ Players can engage at their comfort level
 
 **Constant verification cost**
 
-- Proof verification is O(1) regardless of battle complexity
-- No need to re-execute entire battles on-chain
-- Dramatically reduced gas costs for disputes
+- Proof verification is O(1) regardless of battle complexity.
+- No need to re-execute entire battles on-chain.
+- Dramatically reduced gas costs for disputes.
 
 **Privacy options**
 
-- Prove battle outcome without revealing strategy
-- Hidden information mechanics become possible
-- Fog of war, hidden hands, secret abilities
+- Prove battle outcome without revealing strategy.
+- Hidden information mechanics become possible.
+- Fog of war, hidden hands, secret abilities.
 
 ---
 
@@ -504,7 +608,7 @@ Players can engage at their comfort level
 2. **Next**: Compile to ZK VM (SP1, RISC Zero)
 3. **Future**: On-chain proof verification only
 
-The same Rust code, compiled to a new target - minimal changes required
+The same Rust code, compiled to a new target - minimal changes required.
 
 ---
 
@@ -516,14 +620,8 @@ A game that is:
 - **Built** by its players
 - **Sustained** by its economy
 
-Not just playing a game - **building** one together
+Not just playing a game - **building** one together.
 
 ---
 
 # Questions?
-
----
-
-# Thank You
-
-**ManaLimit** - Where every card tells a story you wrote

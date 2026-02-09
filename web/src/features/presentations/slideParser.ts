@@ -60,6 +60,12 @@ function parseSlideContent(content: string): { html: string; components: Compone
       if (type === 'two-column-end') {
         return '%%%TWO_COL_END%%%';
       }
+      if (type === 'small-start') {
+        return '%%%SMALL_START%%%';
+      }
+      if (type === 'small-end') {
+        return '%%%SMALL_END%%%';
+      }
 
       // React components get placeholders
       try {
@@ -79,7 +85,9 @@ function parseSlideContent(content: string): { html: string; components: Compone
   html = html
     .replace(/%%%TWO_COL_START%%%/g, '<div class="slide-two-column"><div class="slide-column">')
     .replace(/%%%COL_BREAK%%%/g, '</div><div class="slide-column">')
-    .replace(/%%%TWO_COL_END%%%/g, '</div></div>');
+    .replace(/%%%TWO_COL_END%%%/g, '</div></div>')
+    .replace(/%%%SMALL_START%%%/g, '<div class="slide-small-text">')
+    .replace(/%%%SMALL_END%%%/g, '</div>');
 
   return {
     html,
