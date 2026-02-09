@@ -264,13 +264,14 @@ Players ──► Tournaments ──► Rewards
 
 # Card Creation
 
-Anyone can create cards by defining:
+<!-- component:card-creator {} -->
 
-- Stats (Attack, Health, Cost, Pitch)
-- Abilities (using the primitive system)
-- Rarity (affects draft frequency)
-
-Cards are stored on-chain, available to everyone
+- Users can design cards:
+     - Stats (Attack, Health, Cost, Pitch)
+     - Abilities (Fully customizable, see further)
+- Cards are stored on-chain, available to everyone
+     - Cards are given permanent unique identifiers
+     - Card Hash is used to ensure no duplicates are created
 
 ---
 

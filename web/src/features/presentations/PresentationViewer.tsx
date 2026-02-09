@@ -5,6 +5,7 @@ import { parseSlides, type Slide } from './slideParser';
 import { UnitCard } from '../../components/UnitCard';
 import { BattleSlideComponent } from './BattleSlideComponent';
 import { ShopSlideComponent } from './ShopSlideComponent';
+import { CardCreatorSlideComponent } from './CardCreatorSlideComponent';
 import { CardBreakdownComponent } from './CardBreakdownComponent';
 import type { CardView } from '../../types';
 import './styles.css';
@@ -132,6 +133,8 @@ export default function PresentationViewer() {
           root.render(<CardBreakdownComponent card={cardData} />);
         } else if (componentType === 'shop-demo') {
           root.render(<ShopSlideComponent />);
+        } else if (componentType === 'card-creator') {
+          root.render(<CardCreatorSlideComponent />);
         } else if (componentType === 'battle-arena') {
           root.render(
             <BattleSlideComponent
