@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { UnitCard } from './UnitCard';
-import type { BattleOutput, UnitView } from '../types';
+import type { BattleOutput, UnitView, CombatEvent } from '../types';
 
 // --- Helper Components ---
 
@@ -74,6 +74,82 @@ const AbilityToast = ({ name, onAnimationEnd }: { name: string; onAnimationEnd: 
   );
 };
 
+// --- Helper Functions ---
+
+// Compute board state by replaying events from the start up to a given index
+function computeBoardState(
+  events: CombatEvent[],
+  initialPlayer: UnitView[],
+  initialEnemy: UnitView[],
+  upToIndex: number,
+): { playerBoard: UnitView[]; enemyBoard: UnitView[] } {
+  let player = [...initialPlayer];
+  let enemy = [...initialEnemy];
+
+  for (let i = 0; i <= upToIndex && i < events.length; i++) {
+    const event = events[i];
+    switch (event.type) {
+      case 'DamageTaken': {
+        const { target_instance_id, remaining_hp } = event.payload;
+        const update = (board: UnitView[]) =>
+          board.map((u) => (u.instance_id === target_instance_id ? { ...u, health: remaining_hp } : u));
+        player = update(player);
+        enemy = update(enemy);
+        break;
+      }
+      case 'UnitDeath': {
+        const { team, new_board_state } = event.payload;
+        if (String(team).toUpperCase() === 'PLAYER') player = new_board_state || [];
+        else enemy = new_board_state || [];
+        break;
+      }
+      case 'AbilityDamage': {
+        const { target_instance_id, remaining_hp } = event.payload;
+        const update = (board: UnitView[]) =>
+          board.map((u) => (u.instance_id === target_instance_id ? { ...u, health: remaining_hp } : u));
+        player = update(player);
+        enemy = update(enemy);
+        break;
+      }
+      case 'AbilityModifyStats': {
+        const { target_instance_id, new_attack, new_health } = event.payload;
+        const update = (board: UnitView[]) =>
+          board.map((u) => (u.instance_id === target_instance_id ? { ...u, attack: new_attack, health: new_health } : u));
+        player = update(player);
+        enemy = update(enemy);
+        break;
+      }
+      case 'UnitSpawn': {
+        const { team, new_board_state } = event.payload;
+        if (String(team).toUpperCase() === 'PLAYER') player = new_board_state;
+        else enemy = new_board_state;
+        break;
+      }
+    }
+  }
+
+  return { playerBoard: player, enemyBoard: enemy };
+}
+
+// Get the animation delay for a given event
+function getEventDelay(events: CombatEvent[], index: number, playbackSpeed: number): number {
+  const event = events[index];
+  switch (event.type) {
+    case 'AbilityTrigger': return 800 / playbackSpeed;
+    case 'Clash': return 300 / playbackSpeed;
+    case 'DamageTaken': {
+      const prevEvent = index > 0 ? events[index - 1] : null;
+      return (prevEvent?.type === 'DamageTaken' ? 400 : 200) / playbackSpeed;
+    }
+    case 'UnitDeath': return 600 / playbackSpeed;
+    case 'BattleEnd': return 1000 / playbackSpeed;
+    case 'AbilityDamage': return 400 / playbackSpeed;
+    case 'AbilityModifyStats': return 400 / playbackSpeed;
+    case 'UnitSpawn': return 600 / playbackSpeed;
+    default: return 500 / playbackSpeed;
+  }
+}
+
 // --- Main BattleArena Component ---
 
 interface BattleArenaProps {
@@ -98,6 +174,9 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
     return saved ? parseFloat(saved) : 1;
   });
 
+  // Playback mode: 'auto' plays continuously, 'step' pauses for manual control
+  const [playMode, setPlayMode] = useState<'auto' | 'step'>('auto');
+
   // Save speed to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('battlePlaybackSpeed', playbackSpeed.toString());
@@ -107,176 +186,211 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
     console.log({ battleOutput });
   }, [battleOutput]);
 
+  // Process event visual effects when eventIndex changes
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    if (eventIndex >= battleOutput.events.length) return;
 
-    const processNextEvent = () => {
-      if (eventIndex >= battleOutput.events.length) {
-        onBattleEnd();
-        return;
+    const event = battleOutput.events[eventIndex];
+
+    switch (event.type) {
+      case 'AbilityTrigger': {
+        const { source_instance_id, ability_name } = event.payload;
+        setAbilityToasts((prev) => new Map(prev).set(source_instance_id, ability_name));
+        break;
       }
 
-      const event = battleOutput.events[eventIndex];
-      let delay = 500 / playbackSpeed; // Default delay adjusted for speed
-
-      switch (event.type) {
-        case 'AbilityTrigger': {
-          const { source_instance_id, ability_name } = event.payload;
-          setAbilityToasts((prev) => new Map(prev).set(source_instance_id, ability_name));
-          delay = 800 / playbackSpeed; // Show toast for a bit
-          break;
-        }
-
-        case 'Clash': {
-          setPlayerBoard(prevPlayer => {
-            setEnemyBoard(prevEnemy => {
-              const pId = prevPlayer.length > 0 ? prevPlayer[0].instance_id : null;
-              const eId = prevEnemy.length > 0 ? prevEnemy[0].instance_id : null;
-              const clashing = [pId, eId].filter((id) => id !== null) as number[];
-              setClashingUnitIds(clashing);
-              return prevEnemy;
-            });
-            return prevPlayer;
+      case 'Clash': {
+        setPlayerBoard(prevPlayer => {
+          setEnemyBoard(prevEnemy => {
+            const pId = prevPlayer.length > 0 ? prevPlayer[0].instance_id : null;
+            const eId = prevEnemy.length > 0 ? prevEnemy[0].instance_id : null;
+            const clashing = [pId, eId].filter((id) => id !== null) as number[];
+            setClashingUnitIds(clashing);
+            return prevEnemy;
           });
-          delay = 300 / playbackSpeed;
-          break;
-        }
-
-        case 'DamageTaken': {
-          const { target_instance_id, remaining_hp } = event.payload;
-          
-          const updateBoard = (board: UnitView[]) =>
-            board.map((u) =>
-              u.instance_id === target_instance_id ? { ...u, health: remaining_hp } : u
-            );
-
-          setPlayerBoard(prev => {
-            const pUnit = prev.find((u) => u.instance_id === target_instance_id);
-            if (pUnit) {
-              const damage = pUnit.health - remaining_hp;
-              if (damage > 0) {
-                setDamageNumbers((prevNums) => new Map(prevNums).set(target_instance_id, damage));
-              }
-            }
-            return updateBoard(prev);
-          });
-
-          setEnemyBoard(prev => {
-            const eUnit = prev.find((u) => u.instance_id === target_instance_id);
-            if (eUnit) {
-              const damage = eUnit.health - remaining_hp;
-              if (damage > 0) {
-                setDamageNumbers((prevNums) => new Map(prevNums).set(target_instance_id, damage));
-              }
-            }
-            return updateBoard(prev);
-          });
-
-          const prevEvent = battleOutput.events[eventIndex - 1];
-          if (prevEvent?.type === 'DamageTaken') {
-            delay = 400 / playbackSpeed;
-          } else {
-            delay = 200 / playbackSpeed;
-          }
-          break;
-        }
-
-        case 'UnitDeath': {
-          const { team, new_board_state } = event.payload;
-          const isPlayerTeam = String(team).toUpperCase() === 'PLAYER';
-          if (isPlayerTeam) {
-            setPlayerBoard(new_board_state || []);
-          } else {
-            setEnemyBoard(new_board_state || []);
-          }
-          setClashingUnitIds([]);
-          delay = 600 / playbackSpeed;
-          break;
-        }
-
-        case 'BattleEnd': {
-          setClashingUnitIds([]);
-          delay = 1000 / playbackSpeed;
-          break;
-        }
-
-        case 'AbilityDamage': {
-          const { target_instance_id, damage, remaining_hp } = event.payload;
-          
-          const updateBoard = (board: UnitView[]) =>
-            board.map((u) =>
-              u.instance_id === target_instance_id ? { ...u, health: remaining_hp } : u
-            );
-
-          if (damage > 0) {
-            setDamageNumbers((prev) => new Map(prev).set(target_instance_id, damage));
-          }
-
-          setPlayerBoard(updateBoard);
-          setEnemyBoard(updateBoard);
-          delay = 400 / playbackSpeed;
-          break;
-        }
-
-        case 'AbilityModifyStats': {
-          const { target_instance_id: statsTarget, new_attack, new_health, health_change, attack_change } = event.payload;
-
-          const updateBoard = (board: UnitView[]) =>
-            board.map((u) =>
-              u.instance_id === statsTarget ? { ...u, attack: new_attack, health: new_health } : u
-            );
-
-          setPlayerBoard(prev => {
-            const pUnit = prev.find((u) => u.instance_id === statsTarget);
-            if (pUnit && (health_change !== 0 || attack_change !== 0)) {
-              setStatChanges((prevStats) => new Map(prevStats).set(statsTarget, {
-                health: health_change,
-                attack: attack_change
-              }));
-            }
-            return updateBoard(prev);
-          });
-
-          setEnemyBoard(prev => {
-            const eUnit = prev.find((u) => u.instance_id === statsTarget);
-            if (eUnit && (health_change !== 0 || attack_change !== 0)) {
-              setStatChanges((prevStats) => new Map(prevStats).set(statsTarget, {
-                health: health_change,
-                attack: attack_change
-              }));
-            }
-            return updateBoard(prev);
-          });
-
-          delay = 400 / playbackSpeed;
-          break;
-        }
-
-        case 'UnitSpawn': {
-          const { team, new_board_state } = event.payload;
-          const isPlayerTeam = String(team).toUpperCase() === 'PLAYER';
-          if (isPlayerTeam) {
-            setPlayerBoard(new_board_state);
-          } else {
-            setEnemyBoard(new_board_state);
-          }
-          delay = 600 / playbackSpeed;
-          break;
-        }
+          return prevPlayer;
+        });
+        break;
       }
 
-      timeoutId = setTimeout(() => setEventIndex((i) => i + 1), delay);
-    };
+      case 'DamageTaken': {
+        const { target_instance_id, remaining_hp } = event.payload;
 
-    processNextEvent();
+        const updateBoard = (board: UnitView[]) =>
+          board.map((u) =>
+            u.instance_id === target_instance_id ? { ...u, health: remaining_hp } : u
+          );
 
-    // Cleanup: cancel timeout if effect re-runs (e.g., due to StrictMode double-invoke)
-    return () => {
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
+        setPlayerBoard(prev => {
+          const pUnit = prev.find((u) => u.instance_id === target_instance_id);
+          if (pUnit) {
+            const damage = pUnit.health - remaining_hp;
+            if (damage > 0) {
+              setDamageNumbers((prevNums) => new Map(prevNums).set(target_instance_id, damage));
+            }
+          }
+          return updateBoard(prev);
+        });
+
+        setEnemyBoard(prev => {
+          const eUnit = prev.find((u) => u.instance_id === target_instance_id);
+          if (eUnit) {
+            const damage = eUnit.health - remaining_hp;
+            if (damage > 0) {
+              setDamageNumbers((prevNums) => new Map(prevNums).set(target_instance_id, damage));
+            }
+          }
+          return updateBoard(prev);
+        });
+        break;
       }
-    };
-  }, [eventIndex, battleOutput, onBattleEnd]);
+
+      case 'UnitDeath': {
+        const { team, new_board_state } = event.payload;
+        const isPlayerTeam = String(team).toUpperCase() === 'PLAYER';
+        if (isPlayerTeam) {
+          setPlayerBoard(new_board_state || []);
+        } else {
+          setEnemyBoard(new_board_state || []);
+        }
+        setClashingUnitIds([]);
+        break;
+      }
+
+      case 'BattleEnd': {
+        setClashingUnitIds([]);
+        break;
+      }
+
+      case 'AbilityDamage': {
+        const { target_instance_id, damage, remaining_hp } = event.payload;
+
+        const updateBoard = (board: UnitView[]) =>
+          board.map((u) =>
+            u.instance_id === target_instance_id ? { ...u, health: remaining_hp } : u
+          );
+
+        if (damage > 0) {
+          setDamageNumbers((prev) => new Map(prev).set(target_instance_id, damage));
+        }
+
+        setPlayerBoard(updateBoard);
+        setEnemyBoard(updateBoard);
+        break;
+      }
+
+      case 'AbilityModifyStats': {
+        const { target_instance_id: statsTarget, new_attack, new_health, health_change, attack_change } = event.payload;
+
+        const updateBoard = (board: UnitView[]) =>
+          board.map((u) =>
+            u.instance_id === statsTarget ? { ...u, attack: new_attack, health: new_health } : u
+          );
+
+        setPlayerBoard(prev => {
+          const pUnit = prev.find((u) => u.instance_id === statsTarget);
+          if (pUnit && (health_change !== 0 || attack_change !== 0)) {
+            setStatChanges((prevStats) => new Map(prevStats).set(statsTarget, {
+              health: health_change,
+              attack: attack_change
+            }));
+          }
+          return updateBoard(prev);
+        });
+
+        setEnemyBoard(prev => {
+          const eUnit = prev.find((u) => u.instance_id === statsTarget);
+          if (eUnit && (health_change !== 0 || attack_change !== 0)) {
+            setStatChanges((prevStats) => new Map(prevStats).set(statsTarget, {
+              health: health_change,
+              attack: attack_change
+            }));
+          }
+          return updateBoard(prev);
+        });
+        break;
+      }
+
+      case 'UnitSpawn': {
+        const { team, new_board_state } = event.payload;
+        const isPlayerTeam = String(team).toUpperCase() === 'PLAYER';
+        if (isPlayerTeam) {
+          setPlayerBoard(new_board_state);
+        } else {
+          setEnemyBoard(new_board_state);
+        }
+        break;
+      }
+    }
+  }, [eventIndex, battleOutput]);
+
+  // Auto-advance timer (only in auto mode)
+  useEffect(() => {
+    if (eventIndex >= battleOutput.events.length) {
+      if (playMode === 'auto') onBattleEnd();
+      return;
+    }
+    if (playMode !== 'auto') return;
+
+    const delay = getEventDelay(battleOutput.events, eventIndex, playbackSpeed);
+    const timeoutId = setTimeout(() => setEventIndex((i) => i + 1), delay);
+    return () => clearTimeout(timeoutId);
+  }, [eventIndex, playMode, playbackSpeed, battleOutput, onBattleEnd]);
+
+  // --- Step / Skip handlers ---
+
+  const clearAnimations = () => {
+    setClashingUnitIds([]);
+    setDamageNumbers(new Map());
+    setStatChanges(new Map());
+    setAbilityToasts(new Map());
+  };
+
+  const stepForward = () => {
+    if (eventIndex >= battleOutput.events.length) {
+      onBattleEnd();
+      return;
+    }
+    setPlayMode('step');
+    setEventIndex((i) => i + 1);
+  };
+
+  const stepBackward = () => {
+    if (eventIndex <= 0) return;
+    setPlayMode('step');
+    const newIndex = eventIndex - 1;
+    clearAnimations();
+    // Recompute board state up to the event BEFORE the target,
+    // so the event-processing useEffect can apply the target event's visuals
+    const { playerBoard: p, enemyBoard: e } = computeBoardState(
+      battleOutput.events,
+      battleOutput.initial_player_units || [],
+      battleOutput.initial_enemy_units || [],
+      newIndex - 1,
+    );
+    setPlayerBoard(p);
+    setEnemyBoard(e);
+    setEventIndex(newIndex);
+  };
+
+  const skipToEnd = () => {
+    clearAnimations();
+    const { playerBoard: p, enemyBoard: e } = computeBoardState(
+      battleOutput.events,
+      battleOutput.initial_player_units || [],
+      battleOutput.initial_enemy_units || [],
+      battleOutput.events.length - 1,
+    );
+    setPlayerBoard(p);
+    setEnemyBoard(e);
+    setEventIndex(battleOutput.events.length);
+    onBattleEnd();
+  };
+
+  const selectSpeed = (speed: number) => {
+    setPlaybackSpeed(speed);
+    setPlayMode('auto');
+  };
 
   const renderUnit = (unit: UnitView | undefined, team: 'player' | 'enemy', index: number) => {
     const isPlayer = team === 'player';
@@ -367,23 +481,58 @@ export function BattleArena({ battleOutput, onBattleEnd }: BattleArenaProps) {
     { label: '5x', value: 5 },
   ];
 
+  const isAtStart = eventIndex <= 0;
+  const isAtEnd = eventIndex >= battleOutput.events.length;
+
   return (
     <div className="battle-arena flex flex-col items-center gap-2 lg:gap-4 p-2 lg:p-4 bg-gray-800 rounded-lg">
-      {/* Speed Control */}
+      {/* Playback Controls */}
       <div className="flex items-center gap-1 flex-wrap justify-center">
         <span className="text-white text-xs lg:text-sm font-medium mr-1 lg:mr-2">Speed:</span>
         {speedOptions.map((option) => (
           <button
             key={option.value}
-            onClick={() => setPlaybackSpeed(option.value)}
-            className={`px-1.5 lg:px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs font-medium rounded ${playbackSpeed === option.value
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-              }`}
+            onClick={() => selectSpeed(option.value)}
+            className={`px-1.5 lg:px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs font-medium rounded ${
+              playMode === 'auto' && playbackSpeed === option.value
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+            }`}
           >
             {option.label}
           </button>
         ))}
+        <span className="text-gray-500 mx-1">|</span>
+        <button
+          onClick={stepBackward}
+          disabled={isAtStart}
+          className={`px-1.5 lg:px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs font-medium rounded ${
+            isAtStart
+              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+          }`}
+        >
+          Prev
+        </button>
+        <button
+          onClick={stepForward}
+          disabled={isAtEnd}
+          className={`px-1.5 lg:px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs font-medium rounded ${
+            isAtEnd
+              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              : playMode === 'step'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+          }`}
+        >
+          Step
+        </button>
+        <button
+          onClick={skipToEnd}
+          className="px-1.5 lg:px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs font-medium rounded bg-gray-600 text-gray-300 hover:bg-gray-500"
+        >
+          Skip
+        </button>
       </div>
 
       {/* Battle Arena */}
