@@ -103,6 +103,15 @@
   color: #d1d5db;
 }
 
+.slide-content .slide-small-text {
+  font-size: 0.7em;
+}
+
+.slide-content .slide-small-text .slide-table th,
+.slide-content .slide-small-text .slide-table td {
+  padding: 0.4rem 0.6rem;
+}
+
 /* Component placeholder styles */
 .slide-content .component-placeholder {
   display: flex;
@@ -114,9 +123,9 @@
 /* Two-column layout */
 .slide-content .slide-two-column {
   display: flex;
-  gap: 3rem;
+  gap: 2rem;
   align-items: center;
-  margin: 1.5rem 0;
+  margin: 2rem 0;
 }
 
 .slide-content .slide-two-column > .slide-column {
@@ -128,6 +137,15 @@
   flex: 0 0 auto;
   display: flex;
   justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+/* Battle arena in slides */
+.battle-slide-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .slide-content .slide-two-column .component-placeholder {

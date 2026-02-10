@@ -42,8 +42,8 @@ function parseSlideContent(content: string): { html: string; components: Compone
 
   // Extract component declarations: <!-- component:type {"prop": "value"} -->
   // Note: [\w-]+ allows hyphens in component names like "unit-card"
-  // Note: [^}]* allows empty props like {}
-  const componentPattern = /<!--\s*component:([\w-]+)\s+(\{[^}]*\})\s*-->/g;
+  // Note: \{[\s\S]*?\} lazily matches JSON props (supports nested arrays/objects)
+  const componentPattern = /<!--\s*component:([\w-]+)\s+(\{[\s\S]*?\})\s*-->/g;
 
   // Replace component declarations with placeholders
   // Use special markers for layout that won't be affected by markdown processing
@@ -60,6 +60,12 @@ function parseSlideContent(content: string): { html: string; components: Compone
       if (type === 'two-column-end') {
         return '%%%TWO_COL_END%%%';
       }
+      if (type === 'small-start') {
+        return '%%%SMALL_START%%%';
+      }
+      if (type === 'small-end') {
+        return '%%%SMALL_END%%%';
+      }
 
       // React components get placeholders
       try {
@@ -75,16 +81,13 @@ function parseSlideContent(content: string): { html: string; components: Compone
   // Render markdown first
   let html = renderMarkdown(htmlContent);
 
-  console.log('[SlideParser] Before marker replacement:', html.includes('%%%'));
-  console.log('[SlideParser] htmlContent before markdown:', htmlContent.substring(0, 500));
-
   // Then replace layout markers with actual HTML
   html = html
     .replace(/%%%TWO_COL_START%%%/g, '<div class="slide-two-column"><div class="slide-column">')
     .replace(/%%%COL_BREAK%%%/g, '</div><div class="slide-column">')
-    .replace(/%%%TWO_COL_END%%%/g, '</div></div>');
-
-  console.log('[SlideParser] After marker replacement, has two-column:', html.includes('slide-two-column'));
+    .replace(/%%%TWO_COL_END%%%/g, '</div></div>')
+    .replace(/%%%SMALL_START%%%/g, '<div class="slide-small-text">')
+    .replace(/%%%SMALL_END%%%/g, '</div>');
 
   return {
     html,
@@ -104,7 +107,10 @@ function renderMarkdown(md: string): string {
     return `<pre><code class="language-${lang}">${escapeHtml(code.trim())}</code></pre>`;
   });
 
-  // Tables
+  // Ensure content ends with newline for consistent parsing
+  html = html + '\n';
+
+  // Tables - match rows that start and end with |, handle last row without trailing newline
   html = html.replace(/\n(\|.+\|\n)+/g, (match) => {
     const rows = match.trim().split('\n');
     let table = '<table class="slide-table">';
@@ -131,9 +137,24 @@ function renderMarkdown(md: string): string {
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
-  // Lists
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  // Lists (supports one level of nesting via indented sub-items)
+  html = html.replace(/(^[ \t]*- .+\n?)+/gm, (block) => {
+    let result = '<ul>';
+    for (const line of block.split('\n')) {
+      if (!line.trim()) continue;
+      const match = line.match(/^([ \t]+)?- (.+)$/);
+      if (!match) continue;
+      const indent = match[1];
+      const text = match[2];
+      if (indent && indent.length > 0) {
+        result += `<ul><li>${text}</li></ul>`;
+      } else {
+        result += `<li>${text}</li>`;
+      }
+    }
+    result += '</ul>';
+    return result;
+  });
 
   // Inline code (after code blocks)
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
