@@ -26,6 +26,8 @@ pub const STARTING_MANA_LIMIT: i32 = 3;
 pub const MAX_MANA_LIMIT: i32 = 10;
 /// Wins needed for victory
 pub const WINS_TO_VICTORY: i32 = 10;
+/// Number of cards in the initial bag
+pub const STARTING_BAG_SIZE: usize = 50;
 
 /// Current phase of the game
 #[derive(
@@ -171,6 +173,9 @@ impl GameState {
     /// Populate the hand by drawing from the bag.
     /// This should be called after the bag is initialized.
     pub fn draw_hand(&mut self) {
+        // Return unused hand cards to the bag
+        self.local_state.bag.append(&mut self.local_state.hand);
+
         let indices = self.derive_hand_indices();
         if indices.is_empty() {
             return;

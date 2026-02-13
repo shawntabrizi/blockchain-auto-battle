@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 // These must match the blockchain runtime constants
-type WasmMaxBagSize = ConstU32<100>;
+type WasmMaxBagSize = ConstU32<50>;
 type WasmMaxBoardSize = ConstU32<5>;
 type WasmMaxHandActions = ConstU32<10>;
 type WasmMaxSetSize = ConstU32<100>;
@@ -779,13 +779,13 @@ impl GameEngine {
     }
 
     fn initialize_bag(&mut self) {
-        use oab_core::units::create_genesis_bag;
+        use oab_core::units::create_starting_bag;
 
         self.state.local_state.bag.clear();
 
         if let Some(card_set) = &self.card_set {
             // Generate random bag of 100 cards from the already-loaded set
-            self.state.local_state.bag = create_genesis_bag(card_set, self.state.game_seed);
+            self.state.local_state.bag = create_starting_bag(card_set, self.state.game_seed);
         }
 
         // Set next_card_id to be after card definitions

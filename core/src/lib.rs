@@ -40,5 +40,5 @@ pub use opponents::{
 pub use rng::{BattleRng, XorShiftRng};
 pub use state::*;
 pub use types::*;
-pub use units::create_genesis_bag;
+pub use units::create_starting_bag;
 pub use view::*;

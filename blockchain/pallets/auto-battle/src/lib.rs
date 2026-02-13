@@ -33,7 +33,7 @@ pub mod pallet {
     use oab_core::types::{EconomyStats, UnitStats};
     use oab_core::{
         get_opponent_for_round, resolve_battle,
-        units::create_genesis_bag,
+        units::create_starting_bag,
         verify_and_apply_turn, BattleResult, CardSet, CombatUnit, CommitTurnAction, GamePhase,
         GameState, UnitCard, XorShiftRng,
     };
@@ -448,7 +448,7 @@ pub mod pallet {
                 card_pool,
                 set_id,
                 oab_core::state::LocalGameState {
-                    bag: create_genesis_bag(&card_set, seed),
+                    bag: create_starting_bag(&card_set, seed),
                     hand: Vec::new(),
                     board: vec![None; 5], // BOARD_SIZE is 5
                     mana_limit: 3,        // STARTING_MANA_LIMIT is 3

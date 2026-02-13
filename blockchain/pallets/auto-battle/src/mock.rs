@@ -52,7 +52,7 @@ impl
 impl crate::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = MockRandomness;
-    type MaxBagSize = ConstU32<100>;
+    type MaxBagSize = ConstU32<50>;
     type MaxBoardSize = ConstU32<5>;
     type MaxHandActions = ConstU32<10>;
     type MaxAbilities = ConstU32<5>;

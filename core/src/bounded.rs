@@ -115,6 +115,12 @@ where
 {
     /// Populate the hand by drawing from the bag.
     pub fn draw_hand(&mut self) {
+        // Return unused hand cards to the bag
+        let hand_cards: Vec<_> = self.hand.drain(..).collect();
+        for card_id in hand_cards {
+            let _ = self.bag.try_push(card_id);
+        }
+
         let indices = derive_hand_indices_logic(self.bag.len(), self.game_seed, self.round);
         if indices.is_empty() {
             return;
@@ -124,7 +130,6 @@ where
         let mut sorted_indices = indices;
         sorted_indices.sort_unstable_by(|a, b| b.cmp(a));
 
-        self.hand.clear();
         let mut drawn_card_ids = Vec::with_capacity(sorted_indices.len());
         for idx in sorted_indices {
             // Safety: indices are derived from bag.len()
