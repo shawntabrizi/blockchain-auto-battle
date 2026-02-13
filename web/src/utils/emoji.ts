@@ -1,7 +1,8 @@
 /**
  * Centralized utility for card emojis.
  * This is the single source of truth for all unit card representations in the UI.
- * Emoji data is loaded from cards.json and indexed by card ID.
+ * In blockchain mode, emoji data comes from on-chain CardMetadataStore.
+ * In local mode, it's initialized from WASM engine's static card metadata.
  */
 
 // Dynamic emoji map built from card data, indexed by card ID

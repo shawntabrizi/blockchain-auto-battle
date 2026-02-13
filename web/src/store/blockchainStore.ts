@@ -14,6 +14,131 @@ import {
 import { getPolkadotSigner } from "polkadot-api/signer"
 import { AccountId } from "@polkadot-api/substrate-bindings";
 import { createCallArgCoercer } from "../utils/papiCoercion";
+import { initEmojiMap } from "../utils/emoji";
+
+// ============================================================================
+// PAPI-to-serde conversion helpers
+//
+// PAPI decodes blockchain enums as {type: "Variant", value: {...data...}}.
+// The WASM engine deserializes via serde_wasm_bindgen, which expects different
+// formats depending on the serde tag attribute:
+//   - Simple enum (no tag attr):           "VariantName"
+//   - Internally tagged (tag="type"):       {type: "V", field1: ..., field2: ...}
+//   - Adjacently tagged (tag="type", content="data"): {type: "V", data: {...}}
+// ============================================================================
+
+/** Extract variant name from PAPI enum (for simple enums like AbilityTrigger, CompareOp, etc.) */
+function papiEnumStr(v: any): string {
+  if (typeof v === 'string') return v;
+  return v?.type ?? String(v);
+}
+
+/** Convert Binary/BoundedVec<u8> to string */
+function binaryToStr(v: any): string {
+  if (typeof v === 'string') return v;
+  return v?.asText?.() || '';
+}
+
+/**
+ * Convert AbilityEffect from PAPI to serde format.
+ * Serde: internally tagged (#[serde(tag = "type")])
+ * PAPI:  {type: "Damage", value: {amount: 5, target: ...}}
+ * Serde: {type: "Damage", amount: 5, target: ...}
+ */
+function convertEffect(v: any): any {
+  if (!v) return v;
+  const result: any = { type: papiEnumStr(v) };
+  const data = v.value;
+  if (data && typeof data === 'object') {
+    for (const [key, val] of Object.entries(data)) {
+      if (key === 'target') {
+        result[key] = convertTarget(val);
+      } else if (key === 'card_id') {
+        // CardId is #[serde(transparent)] — just a number
+        result[key] = typeof val === 'number' ? val : Number(val);
+      } else {
+        result[key] = val;
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Convert AbilityTarget from PAPI to serde format.
+ * Serde: adjacently tagged (#[serde(tag = "type", content = "data")])
+ * PAPI:  {type: "All", value: {scope: {type: "Enemies"}}}
+ * Serde: {type: "All", data: {scope: "Enemies"}}
+ */
+function convertTarget(v: any): any {
+  if (!v) return v;
+  const tag = papiEnumStr(v);
+  const data = v.value;
+  if (data && typeof data === 'object') {
+    const converted: any = {};
+    for (const [key, val] of Object.entries(data)) {
+      // scope, stat, order, op are all simple enums
+      if (['scope', 'target_scope', 'stat', 'source_stat', 'target_stat', 'order', 'op'].includes(key)) {
+        converted[key] = papiEnumStr(val);
+      } else {
+        converted[key] = val;
+      }
+    }
+    return { type: tag, data: converted };
+  }
+  return { type: tag };
+}
+
+/**
+ * Convert Matcher from PAPI to serde format.
+ * Serde: adjacently tagged (#[serde(tag = "type", content = "data")])
+ */
+function convertMatcher(v: any): any {
+  if (!v) return v;
+  const tag = papiEnumStr(v);
+  const data = v.value;
+  if (data && typeof data === 'object') {
+    const converted: any = {};
+    for (const [key, val] of Object.entries(data)) {
+      if (['scope', 'target_scope', 'stat', 'source_stat', 'target_stat', 'order', 'op'].includes(key)) {
+        converted[key] = papiEnumStr(val);
+      } else {
+        converted[key] = val;
+      }
+    }
+    return { type: tag, data: converted };
+  }
+  return { type: tag };
+}
+
+/**
+ * Convert Condition from PAPI to serde format.
+ * Serde: adjacently tagged (#[serde(tag = "type", content = "data")])
+ * Condition::Is(Matcher) or Condition::AnyOf(Vec<Matcher>)
+ */
+function convertCondition(v: any): any {
+  if (!v) return v;
+  const tag = papiEnumStr(v);
+  if (tag === 'Is') {
+    return { type: 'Is', data: convertMatcher(v.value) };
+  }
+  if (tag === 'AnyOf') {
+    return { type: 'AnyOf', data: (v.value || []).map(convertMatcher) };
+  }
+  return { type: tag };
+}
+
+/** Convert a full PAPI-decoded ability to serde format for the WASM engine */
+function convertAbility(a: any): any {
+  return {
+    trigger: papiEnumStr(a.trigger),
+    effect: convertEffect(a.effect),
+    name: binaryToStr(a.name),
+    description: binaryToStr(a.description),
+    conditions: (a.conditions || []).map(convertCondition),
+    max_triggers: a.max_triggers ?? null,
+  };
+}
 
 interface BlockchainStore {
   // Connection state
@@ -204,7 +329,31 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
         if (engine) {
           console.log("On-chain game found. Syncing WASM engine via SCALE bytes...");
           try {
-            // 1. Fetch raw SCALE bytes from the blockchain
+            // 1. Inject ALL cards from blockchain into the engine's card pool.
+            //    This replaces any static genesis cards with the authoritative
+            //    blockchain versions and adds any custom user-created cards.
+            const { allCards } = get();
+            for (const card of allCards) {
+              try {
+                engine.add_card({
+                  id: card.id,
+                  name: card.metadata?.name || `Card #${card.id}`,
+                  stats: {
+                    attack: card.data.stats.attack,
+                    health: card.data.stats.health,
+                  },
+                  economy: {
+                    play_cost: card.data.economy.play_cost,
+                    pitch_value: card.data.economy.pitch_value,
+                  },
+                  abilities: card.data.abilities.map(convertAbility),
+                });
+              } catch (e) {
+                console.warn(`Failed to inject card ${card.id} into engine:`, e);
+              }
+            }
+
+            // 2. Fetch raw SCALE bytes from the blockchain
             const gameKey = await api.query.AutoBattle.ActiveGame.getKey(selectedAccount.address);
             const cardSetKey = await api.query.AutoBattle.CardSets.getKey(game.set_id);
 
@@ -218,10 +367,10 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
             const gameRaw = Binary.fromHex(gameRawHex).asBytes();
             const cardSetRaw = Binary.fromHex(cardSetRawHex).asBytes();
 
-            // 2. Send to WASM via SCALE bridge
+            // 3. Send to WASM via SCALE bridge
             engine.init_from_scale(gameRaw, cardSetRaw);
 
-            // 3. Receive view and update store
+            // 4. Receive view and update store
             const view = engine.get_view();
             const cardSet = engine.get_card_set();
 
@@ -339,6 +488,9 @@ export const useBlockchainStore = create<BlockchainStore>((set, get) => ({
       });
 
       set({ allCards: cards });
+
+      // Update emoji map from blockchain metadata (source of truth)
+      initEmojiMap(cards.map((c: any) => ({ id: c.id, emoji: c.metadata.emoji })));
     } catch (err) {
       console.error("Failed to fetch cards:", err);
     }

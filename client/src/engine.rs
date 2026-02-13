@@ -135,6 +135,18 @@ impl GameEngine {
         serde_wasm_bindgen::to_value(&metas).unwrap_or(JsValue::NULL)
     }
 
+    /// Add a card to the engine's card pool.
+    /// Used by the frontend to inject custom blockchain cards that aren't in the
+    /// statically compiled genesis set.
+    #[wasm_bindgen]
+    pub fn add_card(&mut self, card_js: JsValue) -> Result<(), String> {
+        let card: UnitCard = serde_wasm_bindgen::from_value(card_js)
+            .map_err(|e| format!("Failed to parse card: {:?}", e))?;
+        log::debug("add_card", &format!("Adding card {} to pool", card.id.0));
+        self.state.card_pool.insert(card.id, card);
+        Ok(())
+    }
+
     /// Helper to get a card from the pool
     fn get_card(&self, id: CardId) -> &UnitCard {
         self.state

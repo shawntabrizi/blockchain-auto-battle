@@ -26,6 +26,7 @@ declare module 'manalimit-client' {
     init_from_scale(session: Uint8Array, cardSet: Uint8Array): void;
     load_card_set(setId: number): void;
     get_card_metas(): Array<{ id: number; name: string; emoji: string }>;
+    add_card(card: any): void;
   }
 
   export function greet(): string;
