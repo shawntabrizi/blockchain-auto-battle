@@ -3,7 +3,6 @@ import { useBlockchainStore } from '../store/blockchainStore';
 import { useGameStore } from '../store/gameStore';
 import { GameOverScreen } from './GameOverScreen';
 import { GameShell } from './GameShell';
-import { BattleOverlay } from './BattleOverlay';
 import { RotatePrompt } from './RotatePrompt';
 import { useInitGuard } from '../hooks';
 import { Link } from 'react-router-dom';
@@ -28,9 +27,6 @@ export const BlockchainPage: React.FC = () => {
     init,
     engine,
     view,
-    showBattleOverlay,
-    endTurn,
-    battleOutput,
   } = useGameStore();
 
   const { submitTurnOnChain } = useBlockchainStore();
@@ -69,9 +65,10 @@ export const BlockchainPage: React.FC = () => {
   const handleSubmitTurn = async () => {
     setTxLoading(true);
     try {
-      // 1. Locally end turn to generate the BattleOutput for playback
-      endTurn();
-      // 2. Submit the actions to the chain
+      // Submit actions to the chain — the blockchain resolves the battle
+      // with its own seed and opponent selection. We do NOT run endTurn()
+      // locally because the local engine uses a different seed/opponent,
+      // producing a different (wrong) result.
       await submitTurnOnChain();
     } finally {
       setTxLoading(false);
@@ -195,11 +192,6 @@ export const BlockchainPage: React.FC = () => {
         selectedAccount={selectedAccount}
         onSelectAccount={selectAccount}
       />
-
-      {/* Battle Overlay - shown on top when battle is active */}
-      {showBattleOverlay && battleOutput && (
-        <BattleOverlay />
-      )}
 
       <RotatePrompt />
     </div>
