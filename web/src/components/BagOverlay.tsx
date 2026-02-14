@@ -51,12 +51,12 @@ export function BagOverlay() {
                     showCost={true}
                     showPitch={true}
                     draggable={false}
-                    isSelected={selection?.type === "bag" && selection.index === bagIndex}
+                    isSelected={selection?.type === 'bag' && selection.index === bagIndex}
                     onClick={() => {
-                      if (selection?.type === "bag" && selection.index === bagIndex) {
+                      if (selection?.type === 'bag' && selection.index === bagIndex) {
                         setSelection(null);
                       } else {
-                        setSelection({ type: "bag", index: bagIndex });
+                        setSelection({ type: 'bag', index: bagIndex });
                       }
                     }}
                   />
